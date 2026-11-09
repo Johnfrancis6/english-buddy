@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>English Buddy — phase 0</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <canvas id="stage" data-ready="false"></canvas>
+
+    <header class="topbar">
+      <div class="brand">English Buddy <span class="tag">phase 0 · test</span></div>
+      <button id="open-settings" class="ghost" type="button">Réglages</button>
+    </header>
+
+    <aside id="debug" class="panel debug" aria-label="Informations de test">
+      <h2>Mesures</h2>
+      <dl>
+        <dt>État</dt>
+        <dd id="d-state">Chargement de Jake…</dd>
+        <dt>Délai médian</dt>
+        <dd>
+          <strong id="d-median">—</strong> <span id="d-count" class="muted">(0/10 tours)</span>
+        </dd>
+        <dt>Dernier délai</dt>
+        <dd id="d-last">—</dd>
+        <dt>Durée</dt>
+        <dd id="d-duration">00:00</dd>
+        <dt>Micro</dt>
+        <dd>
+          <span class="meter"><span id="d-mic"></span></span>
+        </dd>
+        <dt>Modèle</dt>
+        <dd id="d-model" class="muted">—</dd>
+      </dl>
+      <p class="muted small">
+        Délai = temps entre la fin de ta phrase et le premier son de Jake. Objectif : moins de 1,5
+        s.
+      </p>
+      <div id="d-log" class="log" aria-live="polite"></div>
+      <button id="copy-report" class="ghost small" type="button">Copier le rapport</button>
+    </aside>
+
+    <section id="transcript" class="panel transcript" aria-label="Dernières phrases"></section>
+
+    <div id="error" class="panel error" role="alert" hidden>
+      <p id="error-message"></p>
+      <p id="error-detail" class="muted small"></p>
+      <div class="row">
+        <button id="error-retry" type="button">Reconnecter</button>
+        <button id="error-settings" class="ghost" type="button">Réglages</button>
+        <button id="error-close" class="ghost" type="button">Fermer</button>
+      </div>
+    </div>
+
+    <footer class="controls">
+      <button id="start" class="primary" type="button" disabled>Démarrer</button>
+      <button id="lip-test" class="ghost" type="button" disabled>
+        Tester les lèvres (sans clé)
+      </button>
+    </footer>
+
+    <dialog id="settings" class="panel settings">
+      <form method="dialog" id="settings-form">
+        <h2>Réglages</h2>
+        <label for="api-key">Ta clé API Gemini</label>
+        <input
+          id="api-key"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="AIza…"
+        />
+        <p class="note">
+          🔒 <strong>Cette clé reste dans ton navigateur.</strong> Elle est enregistrée uniquement
+          sur cet ordinateur et n’est envoyée qu’à Google pour parler avec Jake. Elle n’est jamais
+          envoyée à English Buddy ni écrite dans le code.
+        </p>
+        <p class="muted small">
+          Pas encore de clé ? Crée-en une gratuitement sur
+          <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer"
+            >aistudio.google.com/apikey</a
+          >.
+        </p>
+        <label for="model">Modèle vocal</label>
+        <select id="model"></select>
+        <label for="voice">Voix de Jake</label>
+        <select id="voice"></select>
+        <p id="key-status" class="muted small"></p>
+        <div class="row">
+          <button id="save-settings" class="primary" value="save">Enregistrer</button>
+          <button id="forget-key" class="ghost" type="button">Effacer la clé</button>
+          <button class="ghost" value="cancel">Annuler</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
