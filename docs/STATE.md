@@ -12,7 +12,7 @@ Dernière mise à jour : 2026-11-09 (séance de cadrage).
 
 ## Ce que Franco doit faire avant la phase 0
 
-- [ ] Installer l'application Claude GitHub sur le dépôt `english-buddy`
+- [x] Installer l’application Claude GitHub sur le dépôt `english-buddy`
       (sinon les sessions ne peuvent pas envoyer de code).
 - [x] Avoir une clé API Gemini (il en a une).
 
