@@ -1,6 +1,6 @@
 # État du projet — English Buddy
 
-Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 2, mode autopilote).
+Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 3, mode autopilote).
 
 ## Où on en est
 
@@ -13,8 +13,12 @@ Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 2, mode 
 - **Phase 2 construite** (personnages et scènes), branche `phase-2` (partie
   de `phase-1`), guide [docs/tests/phase-2.md](tests/phase-2.md). Le site
   de test montre la dernière branche poussée, donc la phase 2.
-- Prochaine étape (autopilote) : phase 3, ouverte par la session
-  orchestratrice. Franco teste les guides 1 puis 2 à son retour.
+- **Phase 3 construite** (mémoire et progrès), branche `phase-3` (partie
+  de `phase-2`), guide [docs/tests/phase-3.md](tests/phase-3.md). Le site de
+  test montre désormais la phase 3.
+- Prochaine étape (autopilote) : phase 4 (habitudes et défis), ouverte par
+  la session orchestratrice. Franco teste les guides 1, 2 puis 3 à son
+  retour.
 
 ## Mode autopilote (Franco absent)
 
@@ -37,8 +41,97 @@ amis et avant la fusion dans `main`.
       accents britannique / américain, voix Kore, Aoede, Orus, Leda
       acceptées ou non, gestes (naturels ? au bon moment ?), choix des
       personnages (modèles VRoid gratuits, style manga).
+- [ ] Phase 3 : justesse des notes du bilan (trop sévères ? trop
+      gentilles ?), mémoire vraie et naturelle (rien d'inventé, rien de
+      gênant), utilité de « Mes progrès ».
+- [ ] Phase 3, **facultatif** — activer les comptes en ligne (Supabase,
+      gratuit), environ 10 minutes :
+  1. Va sur <https://supabase.com>, clique sur « Start your project » et
+     connecte-toi avec ton compte GitHub.
+  2. « New project » : nom `english-buddy`, choisis un mot de passe de base
+     de données (garde-le pour toi, il ne sert pas au site), région
+     « West EU (Paris) » ou la plus proche, plan **Free**, puis « Create new
+     project ». Attends 1 à 2 minutes.
+  3. Menu de gauche → « SQL Editor » → « New query ». Ouvre le fichier
+     [`supabase/schema.sql`](../supabase/schema.sql) du dépôt, copie **tout**
+     son contenu, colle-le, clique sur « Run ». Le message doit être
+     « Success. No rows returned ».
+  4. Menu de gauche → « Authentication » → « URL Configuration » :
+     « Site URL » = `https://johnfrancis6.github.io/english-buddy/` ; dans
+     « Redirect URLs », « Add URL » avec la même adresse, puis « Save ».
+  5. En haut du projet, bouton « Connect » : copie l'**URL du projet**
+     (`https://xxxx.supabase.co`) et la **clé publique** (« publishable key »
+     `sb_publishable_…`, ou « anon key » si c'est la seule proposée). Ces
+     deux valeurs sont publiques par conception : la sécurité vient des
+     règles « Row Level Security » du fichier SQL. **Ne donne jamais** la
+     clé « secret » ni « service_role ».
+  6. Donne ces deux valeurs à Claude (il les met dans
+     `src/sync/config.ts`), ou colle-les toi-même dans Réglages → « Projet
+     Supabase (avancé) » → « Utiliser ce projet » pour essayer.
+  7. Réglages → « Compte (facultatif) » : ton e-mail → « Recevoir un lien de
+     connexion » → ouvre le lien reçu **sur le même ordinateur** → tu
+     reviens connecté ; « Synchroniser maintenant ».
+  8. Limite connue du plan gratuit : Supabase n'envoie que quelques e-mails
+     de connexion par heure ; un projet sans activité pendant une semaine
+     est mis en pause (un clic pour le relancer).
 - [ ] Ouvrir la pull request finale vers `main` et la fusionner (ou la
       demander à Claude).
+
+## Auto-critique de la phase 3
+
+Ce qui marche (mesuré dans la session de construction, Google **simulé**,
+aucun serveur Supabase) :
+
+- Après un bilan, les faits proposés par l'analyseur s'ajoutent à la
+  mémoire (ou remplacent un fait existant), le résumé de la conversation
+  est gardé par personnage ; le prompt suivant de Jake contient les faits,
+  son dernier échange, le niveau estimé et les fautes fréquentes (test
+  Playwright qui lit la configuration envoyée à Google).
+- L'écran de mémoire : voir, corriger, effacer, ajouter ; gardé après
+  rechargement. Un fait corrigé par l'apprenant n'est jamais écrasé.
+- « Mes progrès » à partir de conversations enregistrées : niveau estimé et
+  sous-notes, fautes par type et par semaine, temps de parole, mots
+  nouveaux, mots par phrase, liste des conversations qui rouvre les bilans.
+- Le schéma JSON du bilan demande les sous-notes (0–100, bornes appliquées
+  par Google selon sa doc), les faits et le résumé ; anciens bilans lus sans
+  erreur.
+- Supabase : appels de la bibliothèque, fusion et effacements testés avec un
+  faux client ; le SQL active la sécurité par ligne sur chaque table
+  (vérifié par un test qui lit le fichier).
+- Lint, 91 tests de logique, 7 tests Playwright au vert.
+
+Ce qui est **supposé, pas mesuré** :
+
+- Que `gemini-3.8-flash` remplisse bien les nouveaux champs avec la clé
+  gratuite, et que ses notes soient **justes et stables** d'une conversation
+  à l'autre (une note sur 100 à partir d'un texte transcrit est fragile).
+- Que l'analyseur ne retienne que des faits vrais, sans rien inventer, et
+  respecte la consigne « rien de sensible ».
+- Que le personnage reparle de la mémoire **naturellement** en voix réelle
+  (une ou deux choses) sans réciter ni passer au français (les notes sont en
+  français).
+- Le temps de parole : il compte les moments où le micro entend une voix
+  (seuil de volume) ; bruit ou souffle peuvent l'augmenter.
+- Supabase réel : jamais appelé (pas de projet). Le lien de connexion, le
+  retour sur GitHub Pages et les règles RLS ne sont vérifiés que sur le
+  papier et avec un faux client.
+
+Ce qui est faible :
+
+- Les sous-notes viennent d'une IA qui lit un texte : pas un examen. Elles
+  sont toujours affichées comme « estimation » et moyennées sur 5 bilans.
+- Mémoire partagée entre personnages : Emma peut connaître ta famille alors
+  que tu en as parlé à Jake. Choix assumé (une seule vie), à revoir si
+  Franco trouve ça bizarre.
+- « Mots nouveaux » : première fois qu'un mot sort de ta bouche dans
+  l'historique, hors mots très courants ; la première semaine compte
+  presque tout ; une faute de transcription compte comme mot nouveau.
+- Synchronisation simple : la fiche la plus récente gagne ; deux
+  ordinateurs modifiant le même fait en même temps peuvent en perdre une
+  version. Les conversations venues du compte n'ont pas leur texte (choix du
+  brief).
+- Tableau sans bibliothèque de graphiques : sobre ; pas de courbe de niveau
+  dans le temps (les données sont prêtes, `levelHistory`).
 
 ## Auto-critique de la phase 2
 
@@ -166,9 +259,12 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Autopilote : phase 3 (mémoire des personnages et progression), modèle conseillé **Opus 5.5**,
-  branche `phase-3` créée depuis `phase-2`, ouverte par la session
-  orchestratrice.
+- Autopilote : phase 4 (habitudes et défis : révisions FSRS de ses propres
+  fautes, défi du jour de 5 minutes, missions, expressions à placer, série
+  de jours, carte des scènes), modèle conseillé **Opus 5.5**, branche
+  `phase-4` créée depuis `phase-3`, ouverte par la session orchestratrice.
+  Données prêtes pour elle : fautes et mots par conversation (IndexedDB),
+  temps de parole mesuré par conversation (pour la série ≥ 3 min).
 
 ## Journal
 
@@ -183,6 +279,7 @@ Ce qui est faible :
 | 2026-11-10 | Phase 0 (mesure) | 4ᵉ rapport, réglage « Posé » (900 ms) actif dès le départ : médiane **1,42 s** sur 7 tours (1 min 14), soit environ +0,4 s par rapport à « Rapide », comme prévu | Ressenti (coupures, transcription) à confirmer |
 | 2026-11-10 | Phase 0 (validation) | Les deux rythmes gardés, « Rapide » par défaut | « Oui il me laisse finir, feu vert pour la phase 1 » ; « je veux les deux délais, je passerai sur 500 pour une meilleure fluidité » |
 | 2026-11-10 | Phase 1 | Prompt complet de Jake (reprise sans leçon, tours courts, questions ouvertes), texte en direct, labo transcription (Gemini Live / Groq Whisper / Gemini Flash), bilan JSON en français par type de faute, bouton « Pourquoi ? », conversations en texte dans le navigateur. Testé avec Google et Groq simulés, aucune vraie conversation | En attente |
+| 2026-11-10 | Phase 3 | Mémoire des personnages (faits en français, résumé par personnage, écran voir / corriger / effacer / ajouter) ; profil dans le prompt (niveau estimé, fautes fréquentes) ; bilan avec sous-notes, faits et résumé ; « Mes progrès » (niveau estimé, fautes par type et par semaine, temps de parole, mots nouveaux, longueur des phrases, toutes les conversations) ; compte Supabase préparé mais éteint (code, SQL avec RLS). Testé avec Google simulé, sans serveur Supabase | En attente (autopilote) |
 | 2026-11-10 | Phase 2 | DESIGN.md + styles partagés ; accueil (lieu + personnage) ; 5 personnages VRoid gratuits allégés (Jake, Emma, Maya, Ollie en veste, Lily 9 ans) ; décors toon café / bureau / rue ; marche, salut, hochement, rire, réflexion, check du poing déclenchés par la conversation ; voix et prompt par personnage ; mesures repliables avec images/s. Testé avec Google simulé, sans GPU | En attente (autopilote) |
 
 ## Points ouverts
@@ -230,8 +327,13 @@ Ce qui est faible :
   (toujours accepté). À revoir si Google le retire.
 - Limites exactes du plan gratuit Groq : visibles seulement dans le compte
   (la doc publique donne celles du plan Developer : 20 requêtes/min).
-- Liste de toutes les conversations passées (aujourd'hui : seulement la
-  dernière via « Mon dernier bilan ») : plutôt avec le tableau de bord
-  (phase 3).
-- Profil de l'apprenant (niveau, fautes récentes) injecté dans le prompt de
-  Jake : fixé à B1 pour l'instant, vrai profil en phase 3.
+- Liste de toutes les conversations passées : faite en phase 3 (dans « Mes
+  progrès »).
+- Profil de l'apprenant dans le prompt : fait en phase 3.
+- Courbe du niveau estimé dans le temps (données prêtes) : si Franco la
+  veut.
+- Mémoire par personnage plutôt que partagée : si Franco trouve étrange
+  qu'Emma sache ce qu'il a dit à Jake.
+- Score de prononciation dans le niveau estimé : phase 6.
+- Clés Supabase : la clé « anon » sera retirée par Supabase fin 2026 ; le
+  code accepte la nouvelle clé « publishable ».

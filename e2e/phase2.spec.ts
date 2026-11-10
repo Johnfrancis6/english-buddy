@@ -95,8 +95,10 @@ test('talk with Emma at the office: prompt, voice, gestures, debrief', async ({ 
 
   say({ inputTranscription: { text: 'I am agree with the plan.' } });
   await expect(page.locator('#transcript p.you:not([hidden])')).toContainText('I am agree');
-  // Wait for the wave to end, then a joke: Emma laughs.
-  await expect(canvas).not.toHaveAttribute('data-gestures', /wave/, { timeout: 10_000 });
+  // Wait for the wave (and a "think" set off by the fake microphone) to end,
+  // then a joke: Emma laughs.
+  await expect(canvas).not.toHaveAttribute('data-gestures', /wave|think/, { timeout: 15_000 });
+  await page.waitForTimeout(2600); // body gestures are at least 2.5 s apart
   speak('Haha, you agree with me? Brilliant.');
   await expect(canvas).toHaveAttribute('data-gestures', /laugh/, { timeout: 5000 });
 

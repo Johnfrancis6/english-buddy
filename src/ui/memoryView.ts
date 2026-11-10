@@ -44,13 +44,13 @@ export function renderMemory(root: HTMLElement, facts: readonly Fact[], h: Memor
 
 function factRow(f: Fact, h: MemoryHandlers): HTMLElement {
   const li = el('li', { class: 'fact', 'data-id': f.id });
-  const meta =
-    f.category === 'last_talk'
-      ? `avec ${h.characterName(f.character ?? '')} · ${when(f.updatedAt)}`
-      : f.byLearner
-        ? `corrigé par toi · ${when(f.updatedAt)}`
-        : `appris le ${when(f.updatedAt)}`;
   const view = () => {
+    const meta =
+      f.category === 'last_talk'
+        ? `avec ${h.characterName(f.character ?? '')} · ${when(f.updatedAt)}`
+        : f.byLearner
+          ? `écrit ou corrigé par toi · ${when(f.updatedAt)}`
+          : `appris le ${when(f.updatedAt)}`;
     const edit = el('button', { class: 'btn quiet small', type: 'button', text: 'Corriger' });
     const del = el('button', { class: 'link danger small', type: 'button', text: 'Effacer' });
     edit.addEventListener('click', editMode);

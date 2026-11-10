@@ -705,7 +705,12 @@ async function openMemory(): Promise<void> {
       'La mémoire ne peut pas être lue dans ce navigateur (fenêtre privée ?).';
     log(`Mémoire illisible : ${String(err)}`);
   }
-  if (!memoryDialog.open) memoryDialog.showModal();
+  if (!memoryDialog.open) {
+    memoryDialog.showModal();
+    // Start at the top: native dialogs focus their first button otherwise.
+    $('memory-title').focus();
+    memoryDialog.scrollTop = 0;
+  }
 }
 
 async function openProgress(): Promise<void> {
@@ -729,7 +734,12 @@ async function openProgress(): Promise<void> {
       if (!t.debrief) void runDebrief(t);
     },
   );
-  if (!progressDialog.open) progressDialog.showModal();
+  if (!progressDialog.open) {
+    progressDialog.showModal();
+    // Start at the top: native dialogs focus their first button otherwise.
+    $('progress-title').focus();
+    progressDialog.scrollTop = 0;
+  }
 }
 
 $('open-memory').addEventListener('click', () => void openMemory());

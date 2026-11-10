@@ -663,3 +663,9 @@ body.page {
   cursor: pointer;
   color: var(--ink-soft);
 }
+.fact-actions .link {
+  font-size: var(--text-sm);
+}
+.dialog h2[tabindex='-1']:focus {
+  outline: none;
+}

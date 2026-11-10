@@ -29,6 +29,7 @@ WCAG formula on 2026-11-10.
 | `--success` | `#2e7d32` | Correct form, "kept", delay on target | 5.1 on white |
 | `--danger` | `#a32d1c` | Errors, the learner's wrong form, destructive links | 6.9 |
 | `--info` | `#2f5d8a` | The learner's name in transcripts, "Pourquoi ?" box tint | 6.6 |
+| `--heat-1` … `--heat-4` | `#f3dccf`, `#e4b49c`, `#c67751`, `#b34a17` | Sequential steps of the accent for counts (progress table). The number is always written in the cell | `--ink` on 1–3 (≥ 4.7), white on 4 (5.4) |
 
 Character colours (name in the transcript, card ribbon): Jake `#b34a17`, Emma
 `#2f5d8a`, Maya `#8a3b8f`, Ollie `#2e6b4f`, Lily `#9a5b00`. Each one is
@@ -153,3 +154,15 @@ default**. They stay reachable in one click and never distract a learner.
 | Settings | `index.html` `#settings` | Keys first, then voice, then transcription |
 | Debrief | `index.html` `#debrief` | Summary, strengths, mistakes by type, words, next focus |
 | Transcription lab | `lab.html` | Page layout (`body.page`), same tokens |
+| Memory ("Ce qu'ils savent de moi") | `index.html` `#memory` | Facts grouped by subject, each with "Corriger" (quiet) and "Effacer" (danger link); "Ajouter" folded; "Fermer" primary |
+| Progress ("Mes progrès") | `index.html` `#progress` | Level box (band + "estimation" chip + 4 skill bars with B1/B2/C1 ticks), 4 tiles, mistakes × weeks table, speaking-time bars, list of talks |
+| Settings → account | `index.html` `#settings` | "Compte (facultatif)" after the keys; says plainly when accounts are off |
+
+### Charts (phase 3)
+
+- Plain HTML and CSS, no chart library. One hue (the accent) for every
+  measure: there is never more than one series per chart.
+- Every value is also written as text (cell number, bar label, `title` on
+  hover); counts use `tabular-nums`.
+- Level and scores always say "estimation"; scores are /100 with the B1
+  (40), B2 (60), C1 (80) marks.
