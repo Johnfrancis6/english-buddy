@@ -31,21 +31,21 @@ const memStore = () => {
 describe('transcript', () => {
   it('assembles streamed chunks into turns and closes them', () => {
     const t = new Transcript('live', () => 0);
-    t.addLive('jake', 'Hey! ');
-    t.addLive('jake', 'How are you?');
+    t.addLive('buddy', 'Hey! ');
+    t.addLive('buddy', 'How are you?');
     t.completeModelTurn(false);
     t.addLive('you', 'I am ');
     t.addLive('you', 'fine.');
     expect(t.cutLearner(true)?.text).toBe('I am fine.');
-    t.addLive('jake', 'Cool.');
+    t.addLive('buddy', 'Cool.');
     t.addLive('you', ' Thanks'); // late chunk joins the cut learner turn
     t.completeModelTurn(false);
     t.addLive('you', 'Next');
     const f = t.finished();
     expect(f.map((x) => [x.who, x.text])).toEqual([
-      ['jake', 'Hey! How are you?'],
+      ['buddy', 'Hey! How are you?'],
       ['you', 'I am fine. Thanks'],
-      ['jake', 'Cool.'],
+      ['buddy', 'Cool.'],
       ['you', 'Next'],
     ]);
   });
@@ -55,7 +55,7 @@ describe('transcript', () => {
     const turn = t.cutLearner(true)!;
     expect(turn.state).toBe('cut');
     expect(t.cutLearner(false)).toBeNull();
-    t.addLive('jake', 'Oh nice.');
+    t.addLive('buddy', 'Oh nice.');
     t.addLive('you', 'Yesterday I go');
     expect(t.turns.find((x) => x.id === turn.id)?.text).toBe('Yesterday I go');
   });
@@ -82,7 +82,7 @@ describe('transcript', () => {
 
   it('marks an interrupted Jake turn and keeps the learner turn open', () => {
     const t = new Transcript('live', () => 0);
-    t.addLive('jake', 'So I was thinking');
+    t.addLive('buddy', 'So I was thinking');
     t.addLive('you', 'Wait');
     t.completeModelTurn(true);
     expect(t.turns[0].interrupted).toBe(true);
@@ -187,7 +187,7 @@ describe('debrief parsing', () => {
           said: 'I go',
           correct: 'I went',
           explanation_fr: 'Passé.',
-          recast_by_jake: true,
+          recast_by_character: true,
         },
         {
           turn: 2,
@@ -195,7 +195,7 @@ describe('debrief parsing', () => {
           said: 'I go',
           correct: 'I went',
           explanation_fr: 'doublon',
-          recast_by_jake: false,
+          recast_by_character: false,
         },
         {
           turn: 9,
@@ -223,7 +223,11 @@ describe('debrief parsing', () => {
     expect(d.summaryFr).toBe('Bien joué.');
     expect(d.strengthsFr).toEqual(['a', 'b', 'c']);
     expect(d.mistakes).toHaveLength(2);
-    expect(d.mistakes[0]).toMatchObject({ turn: 2, recastByJake: true, explanationFr: 'Passé.' });
+    expect(d.mistakes[0]).toMatchObject({
+      turn: 2,
+      recastByCharacter: true,
+      explanationFr: 'Passé.',
+    });
     expect(d.mistakes[1]).toMatchObject({ turn: -1, type: 'other' });
     expect(d.vocabulary).toHaveLength(1);
     expect(d.model).toBe('m');
@@ -240,7 +244,7 @@ describe('debrief parsing', () => {
       said: 'a',
       correct: 'b',
       explanationFr: '',
-      recastByJake: false,
+      recastByCharacter: false,
     });
     expect(groupByType([m('articles'), m('verb_tense'), m('verb_tense')]).map((g) => g[0])).toEqual(
       ['verb_tense', 'articles'],
@@ -276,10 +280,13 @@ describe('debrief parsing', () => {
 describe('prompts', () => {
   it('formats the transcript with learner turn ids', () => {
     expect(
-      formatTranscript([
-        { id: 1, who: 'jake', text: 'Hi!', interrupted: true },
-        { id: 2, who: 'you', text: 'I go home' },
-      ]),
+      formatTranscript(
+        [
+          { id: 1, who: 'buddy', text: 'Hi!', interrupted: true },
+          { id: 2, who: 'you', text: 'I go home' },
+        ],
+        'Jake',
+      ),
     ).toBe('Jake: Hi! (interrupted)\n[#2] Learner: I go home');
     expect(
       debriefSystemPrompt({ level: 'B1', characterName: 'Jake', transcriptSource: 'Groq' }),
@@ -292,7 +299,7 @@ describe('prompts', () => {
           said: 'I go',
           correct: 'I went',
           explanationFr: 'x',
-          recastByJake: false,
+          recastByCharacter: false,
         },
         [{ id: 2, who: 'you', text: 'Yesterday I go home' }],
       ),
@@ -401,7 +408,7 @@ describe('providers (fetch mocked)', () => {
           said: 'I go',
           correct: 'I went',
           explanation_fr: 'Passé',
-          recast_by_jake: true,
+          recast_by_character: true,
         },
       ],
       vocabulary: [],
@@ -418,7 +425,7 @@ describe('providers (fetch mocked)', () => {
     const a = new GeminiAnalyzer('K', 'gemini-3.8-flash', ['gemini-3.8-flash', 'gemini-3.6-flash']);
     const d = await a.analyze(
       [
-        { id: 1, who: 'jake', text: 'Hi' },
+        { id: 1, who: 'buddy', text: 'Hi' },
         { id: 2, who: 'you', text: 'Yesterday I go home' },
       ],
       { level: 'B1', characterName: 'Jake', transcriptSource: 'Gemini Live' },

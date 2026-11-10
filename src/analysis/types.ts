@@ -22,8 +22,8 @@ export interface Mistake {
   said: string;
   correct: string;
   explanationFr: string;
-  /** Jake reused the correct form in his answer. */
-  recastByJake: boolean;
+  /** The character reused the correct form in their answer. */
+  recastByCharacter: boolean;
 }
 
 export interface VocabItem {
@@ -46,7 +46,7 @@ export interface Debrief {
 /** One line of the conversation as given to the analyzer. */
 export interface AnalysisTurn {
   id: number;
-  who: 'you' | 'jake';
+  who: 'you' | 'buddy';
   text: string;
   interrupted?: boolean;
 }
@@ -54,6 +54,8 @@ export interface AnalysisTurn {
 export interface AnalysisContext {
   level: string;
   characterName: string;
+  /** Who the learner talked with, in a few English words (persona.ts). */
+  characterDescription?: string;
   /** Where the learner's text comes from, so recognition errors are expected. */
   transcriptSource: string;
 }

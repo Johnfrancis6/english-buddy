@@ -7,6 +7,8 @@ export interface DebriefHandlers {
   why(index: number, mistake: Mistake): Promise<string>;
   /** Explanations already known, by index. */
   known: Record<number, string>;
+  /** The character the learner talked with. */
+  characterName: string;
 }
 
 /** Renders the French debrief: summary, mistakes by type, vocabulary. */
@@ -60,7 +62,7 @@ export function renderDebrief(root: HTMLElement, d: Debrief, h: DebriefHandlers)
 function mistakeCard(index: number, m: Mistake, h: DebriefHandlers): HTMLElement {
   const why = el('div', { class: 'why', 'aria-live': 'polite' });
   why.hidden = true;
-  const button = el('button', { class: 'ghost small', type: 'button', text: 'Pourquoi ?' });
+  const button = el('button', { class: 'btn quiet small', type: 'button', text: 'Pourquoi ?' });
   const show = (text: string) => {
     why.textContent = text;
     why.hidden = false;
@@ -102,8 +104,11 @@ function mistakeCard(index: number, m: Mistake, h: DebriefHandlers): HTMLElement
       el('span', { class: 'correct', text: m.correct }),
     ),
     el('p', { class: 'explain', text: m.explanationFr }),
-    m.recastByJake
-      ? el('p', { class: 'muted small', text: 'Jake l’a reformulé pendant la conversation.' })
+    m.recastByCharacter
+      ? el('p', {
+          class: 'muted small',
+          text: `${h.characterName} l’a reformulé pendant la conversation.`,
+        })
       : null,
     button,
     why,

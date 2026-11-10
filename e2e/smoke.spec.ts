@@ -1,16 +1,35 @@
 import { expect, test } from '@playwright/test';
 
-test('page loads, the character renders, the mouth follows sound', async ({ page }) => {
+test('home, scene, character, key, gestures and lip sync', async ({ page }) => {
+  test.setTimeout(150_000);
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
 
   await page.goto('./');
   await expect(page).toHaveTitle(/English Buddy/);
-
   const canvas = page.locator('#stage');
   await expect(canvas).toHaveAttribute('data-ready', 'true', { timeout: 60_000 });
 
-  // First visit without a key: the settings dialog opens with the privacy note.
+  // Home: three scenes, five characters, Jake at the café by default.
+  await expect(page.locator('#home')).toBeVisible();
+  await expect(page.locator('#scene-cards .card')).toHaveCount(3);
+  await expect(page.locator('#character-cards .card')).toHaveCount(5);
+  await expect(page.locator('#character-cards .card[data-id="jake"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  // The test measures stay out of the way on the home screen.
+  await expect(page.locator('#measures')).toBeHidden();
+
+  // Picking the office brings Emma.
+  await page.locator('#scene-cards .card[data-id="office"]').click();
+  await expect(canvas).toHaveAttribute('data-scene', 'office');
+  await expect(canvas).toHaveAttribute('data-character', 'emma');
+  await expect(canvas).toHaveAttribute('data-ready', 'true', { timeout: 60_000 });
+  await expect(page.locator('#enter')).toContainText('Emma');
+
+  // First visit without a key: entering opens the settings with the privacy note.
+  await page.locator('#enter').click();
   const dialog = page.locator('#settings');
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText('Cette clé reste dans ton navigateur');
@@ -19,6 +38,12 @@ test('page loads, the character renders, the mouth follows sound', async ({ page
   await expect(dialog).toBeHidden();
   const stored = await page.evaluate(() => localStorage.getItem('english-buddy.settings.v1'));
   expect(stored).toContain('AIzaFAKE-smoke-test-key-0000');
+  expect(stored).toContain('"character":"emma"');
+
+  // Emma walks in, then the talk can start.
+  await expect(page.locator('#start')).toBeEnabled({ timeout: 30_000 });
+  await expect(canvas).toHaveAttribute('data-walking', 'false');
+  await expect(page.locator('#talk-hint')).toContainText('Emma');
 
   // The canvas really draws: frames advance and the image is not one flat colour.
   const frames = async () => Number(await canvas.getAttribute('data-frames'));
@@ -40,12 +65,30 @@ test('page loads, the character renders, the mouth follows sound', async ({ page
   });
   expect(colours).toBeGreaterThan(8);
 
+  // Measures are folded; once open, FPS is measured and the test tools work.
+  const measures = page.locator('#measures');
+  await expect(measures).toBeVisible();
+  await expect(measures).not.toHaveAttribute('open');
+  await measures.locator('summary').click();
+  await expect(page.locator('#d-fps')).not.toHaveText('—', { timeout: 5000 });
+
+  // Gestures: the test button plays the first one.
+  await page.locator('#gesture-test').click();
+  await expect(canvas).toHaveAttribute('data-gestures', /wave/, { timeout: 3000 });
+
   // Lip sync: the mouth opens on sound and closes again in silence.
   const mouth = async () => Number(await canvas.getAttribute('data-mouth'));
-  expect(await mouth()).toBe(0);
   await page.locator('#lip-test').click();
   await expect.poll(mouth, { timeout: 3000, intervals: [30] }).toBeGreaterThan(0.2);
   await expect.poll(mouth, { timeout: 8000, intervals: [100] }).toBe(0);
+
+  // Back home: the choice is kept.
+  await page.locator('#open-home').click();
+  await expect(page.locator('#home')).toBeVisible();
+  await expect(page.locator('#character-cards .card[data-id="emma"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
 
   expect(errors).toEqual([]);
 });

@@ -194,7 +194,15 @@ describe('settings', () => {
   it('falls back to defaults on unknown or corrupt values', () => {
     const store = memory();
     saveSettings(
-      { ...DEFAULTS, apiKey: 'k', model: 'old-model', voice: 'Nobody', pauseMs: 123 },
+      {
+        ...DEFAULTS,
+        apiKey: 'k',
+        model: 'old-model',
+        voiceOverride: 'Nobody',
+        pauseMs: 123,
+        scene: 'moon' as 'cafe',
+        character: 'bob' as 'jake',
+      },
       store,
     );
     expect(loadSettings(store)).toEqual({ ...DEFAULTS, apiKey: 'k' });

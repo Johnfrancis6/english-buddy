@@ -98,7 +98,12 @@ $('lab-connect').addEventListener('click', () => {
     stateEl.textContent = 'Il faut ta clé Gemini pour commencer.';
     return;
   }
-  voice.configure({ ...settings, systemPrompt: LAB_PROMPT, greeting: null });
+  voice.configure({
+    ...settings,
+    voice: settings.voiceOverride || 'Puck',
+    systemPrompt: LAB_PROMPT,
+    greeting: null,
+  });
   showSentence();
   void voice.start();
 });
@@ -276,7 +281,7 @@ $('lab-use').addEventListener('click', () => {
   const source = $('lab-use').dataset.source as TranscriptSource | undefined;
   if (!source) return;
   saveSettings({ ...loadSettings(), transcriptSource: source });
-  $('lab-reco').textContent += ' ✓ Choisie pour tes conversations avec Jake.';
+  $('lab-reco').textContent += ' ✓ Choisie pour tes conversations.';
 });
 
 $('lab-copy').addEventListener('click', () => {

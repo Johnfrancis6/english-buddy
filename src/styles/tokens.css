@@ -1,0 +1,43 @@
+/* Design tokens: the only place colours, sizes and radii are defined.
+   Documented in docs/DESIGN.md; change both together. */
+:root {
+  --bg: #f6ead9;
+  --surface: rgba(255, 250, 243, 0.94);
+  --surface-solid: #fffaf3;
+  --surface-raised: #ffffff;
+  --ink: #2b2118;
+  --ink-soft: #6f5f50;
+  --line: rgba(60, 40, 20, 0.14);
+  --accent: #b34a17;
+  --accent-soft: rgba(179, 74, 23, 0.12);
+  --focus: rgba(179, 74, 23, 0.5);
+  --success: #2e7d32;
+  --danger: #a32d1c;
+  --info: #2f5d8a;
+  --live: #3c2f24;
+  --buddy: #b34a17; /* set per character by the page */
+
+  --font: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-pill: 999px;
+  --shadow: 0 6px 24px rgba(60, 40, 20, 0.12);
+  --backdrop: rgba(40, 28, 16, 0.35);
+
+  font-family: var(--font);
+  color: var(--ink);
+  line-height: 1.45;
+}

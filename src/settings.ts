@@ -21,16 +21,22 @@ export const ANALYSIS_MODELS = [
   { id: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash-Lite (le plus rapide)' },
 ] as const;
 
-/** Names checked on 2026-11-10 in the TTS voice list (/docs/speech-generation#voices). */
-export const VOICES = ['Puck', 'Charon', 'Fenrir', 'Orus', 'Kore', 'Aoede'] as const;
+/**
+ * Names checked in the 30 prebuilt voices of /docs/speech-generation#voices
+ * (2026-11-10). Each character has its own voice (src/cast.ts); the learner
+ * may force one of these instead.
+ */
+export const VOICES = ['Puck', 'Charon', 'Fenrir', 'Orus', 'Kore', 'Aoede', 'Leda'] as const;
+export const SCENE_IDS = ['cafe', 'office', 'street'] as const;
+export const CHARACTER_IDS = ['jake', 'emma', 'maya', 'ollie', 'lily'] as const;
 
 /**
- * How long the learner may stay silent before Jake takes his turn. A longer
+ * How long the learner may stay silent before the character takes their turn. A longer
  * pause leaves time to search for a word, and adds the same time to the delay
  * before every answer.
  */
 export const PAUSES = [
-  { ms: 500, label: 'Rapide — Jake répond après 0,5 s de silence' },
+  { ms: 500, label: 'Rapide — réponse après 0,5 s de silence' },
   { ms: 900, label: 'Posé — 0,9 s de silence' },
   { ms: 1500, label: 'Je prends mon temps — 1,5 s de silence' },
 ] as const;
@@ -55,7 +61,10 @@ export interface Settings {
   apiKey: string;
   groqKey: string;
   model: string;
-  voice: string;
+  /** '' = the character's own voice. */
+  voiceOverride: string;
+  scene: (typeof SCENE_IDS)[number];
+  character: (typeof CHARACTER_IDS)[number];
   pauseMs: number;
   analysisModel: string;
   transcriptSource: TranscriptSource;
@@ -68,7 +77,9 @@ export const DEFAULTS: Settings = {
   apiKey: '',
   groqKey: '',
   model: MODELS[0].id,
-  voice: VOICES[0],
+  voiceOverride: '',
+  scene: 'cafe',
+  character: 'jake',
   pauseMs: PAUSES[0].ms,
   analysisModel: ANALYSIS_MODELS[0].id,
   transcriptSource: 'live',
@@ -93,7 +104,11 @@ export function loadSettings(store: Store = localStorage): Settings {
         MODELS.map((m) => m.id as string),
         DEFAULTS.model,
       ),
-      voice: pick(p.voice, VOICES as readonly string[], DEFAULTS.voice),
+      // The phase 0–1 field `voice` was Jake's voice: it is not reused, so
+      // every character keeps its own voice unless the learner forces one.
+      voiceOverride: pick(p.voiceOverride, ['', ...VOICES] as readonly string[], ''),
+      scene: pick(p.scene, SCENE_IDS, DEFAULTS.scene),
+      character: pick(p.character, CHARACTER_IDS, DEFAULTS.character),
       pauseMs: pick(
         p.pauseMs,
         PAUSES.map((x) => x.ms as number),

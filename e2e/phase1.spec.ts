@@ -21,6 +21,13 @@ function jakeAudio(): string {
 const say = (ws: WebSocketRoute, serverContent: object) =>
   ws.send(JSON.stringify({ serverContent }));
 
+/** Home screen → the café with Jake (the default), then wait for him. */
+async function enterScene(page: Page): Promise<void> {
+  await expect(page.locator('#stage')).toHaveAttribute('data-ready', 'true', { timeout: 60_000 });
+  await page.locator('#enter').click();
+  await expect(page.locator('#start')).toBeEnabled({ timeout: 30_000 });
+}
+
 async function withKey(page: Page, extra: object = {}): Promise<void> {
   await page.addInitScript(
     ([key, more]) => {
@@ -72,7 +79,7 @@ test('talk with Jake, live transcript, French debrief and "Pourquoi ?"', async (
               said: 'Yesterday I go',
               correct: 'Yesterday I went',
               explanation_fr: 'Avec « yesterday », on met le verbe au passé (prétérit).',
-              recast_by_jake: true,
+              recast_by_character: true,
             },
           ],
           vocabulary: [
@@ -89,7 +96,7 @@ test('talk with Jake, live transcript, French debrief and "Pourquoi ?"', async (
   });
 
   await page.goto('./');
-  await expect(page.locator('#stage')).toHaveAttribute('data-ready', 'true', { timeout: 60_000 });
+  await enterScene(page);
   await page.locator('#start').click();
   await expect.poll(() => setup !== null, { timeout: 20_000 }).toBe(true);
 
@@ -108,6 +115,8 @@ test('talk with Jake, live transcript, French debrief and "Pourquoi ?"', async (
   say(ws, { outputTranscription: { text: 'Hey! How are you doing?' } });
   say(ws, { turnComplete: true });
   await expect(page.locator('#transcript')).toContainText('Hey! How are you doing?');
+  // The greeting comes with a wave.
+  await expect(page.locator('#stage')).toHaveAttribute('data-gestures', /wave/);
 
   say(ws, { inputTranscription: { text: 'Yesterday I go ' } });
   say(ws, { inputTranscription: { text: 'to the cinema.' } });
@@ -119,7 +128,7 @@ test('talk with Jake, live transcript, French debrief and "Pourquoi ?"', async (
   });
   say(ws, { outputTranscription: { text: 'Oh nice, you went to the cinema? What did you see?' } });
   say(ws, { turnComplete: true });
-  await expect(page.locator('#transcript p.jake:not([hidden])')).toHaveCount(2);
+  await expect(page.locator('#transcript p.buddy:not([hidden])')).toHaveCount(2);
 
   // Hide / show the transcript.
   await page.locator('#toggle-transcript').click();
@@ -147,8 +156,8 @@ test('talk with Jake, live transcript, French debrief and "Pourquoi ?"', async (
   // The talk (text only) is kept in this browser and comes back after a reload.
   await page.locator('#debrief-close').click();
   await page.reload();
-  await expect(page.locator('#open-debrief')).toBeVisible();
-  await page.locator('#open-debrief').click();
+  await expect(page.locator('#home-debrief')).toBeVisible();
+  await page.locator('#home-debrief').click();
   await expect(page.locator('#debrief .correct')).toHaveText('Yesterday I went');
   await page.locator('#debrief').getByRole('button', { name: 'Pourquoi ?' }).click();
   await expect(page.locator('#debrief .why')).toContainText('prétérit');
@@ -259,7 +268,7 @@ test('with a Groq key, the learner text comes from Groq Whisper', async ({ page 
   });
 
   await page.goto('./');
-  await expect(page.locator('#stage')).toHaveAttribute('data-ready', 'true', { timeout: 60_000 });
+  await enterScene(page);
   await expect(page.locator('#t-source')).toContainText('Groq');
   await page.locator('#start').click();
   await expect.poll(() => live !== null, { timeout: 20_000 }).toBe(true);

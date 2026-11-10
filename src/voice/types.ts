@@ -15,7 +15,7 @@ export interface VoiceEvents {
    */
   onMicAudio?(pcm: Uint8Array, voiced: boolean): void;
   /** A transcription chunk from the voice provider. */
-  onTranscript(who: 'you' | 'jake', text: string): void;
+  onTranscript(who: 'you' | 'buddy', text: string): void;
   /** The model finished its turn (interrupted = the learner cut it). */
   onTurnComplete(interrupted: boolean): void;
   onInfo(text: string): void;

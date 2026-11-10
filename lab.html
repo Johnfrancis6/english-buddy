@@ -8,8 +8,8 @@
   </head>
   <body class="page">
     <header class="topbar static">
-      <div class="brand">English Buddy <span class="tag">labo transcription</span></div>
-      <a class="ghost button" href="./">← Retour à Jake</a>
+      <div class="brand">English Buddy <span class="chip">labo transcription</span></div>
+      <a class="btn" href="./">← Retour aux personnages</a>
     </header>
 
     <main class="lab">
@@ -71,7 +71,7 @@
           </p>
         </div>
         <div class="row">
-          <button id="lab-connect" class="primary" type="button">Commencer</button>
+          <button id="lab-connect" class="btn primary" type="button">Commencer</button>
           <span id="lab-state" class="muted small">Pas encore connecté.</span>
         </div>
       </section>
@@ -81,10 +81,10 @@
         <p id="lab-sentence" class="big"></p>
         <p id="lab-hints" class="muted small"></p>
         <div class="row">
-          <button id="lab-record" class="primary" type="button">🎙 Enregistrer</button>
+          <button id="lab-record" class="btn primary" type="button">🎙 Enregistrer</button>
           <span class="meter"><span id="lab-mic"></span></span>
-          <button id="lab-prev" class="ghost" type="button">← Précédente</button>
-          <button id="lab-next" class="ghost" type="button">Suivante →</button>
+          <button id="lab-prev" class="btn" type="button">← Précédente</button>
+          <button id="lab-next" class="btn" type="button">Suivante →</button>
         </div>
         <div id="lab-results"></div>
       </section>
@@ -106,10 +106,10 @@
         </table>
         <p id="lab-reco" class="reco"></p>
         <div class="row">
-          <button id="lab-use" class="primary" type="button" hidden>
-            Utiliser cette source pour Jake
+          <button id="lab-use" class="btn primary" type="button" hidden>
+            Utiliser cette source dans mes conversations
           </button>
-          <button id="lab-copy" class="ghost" type="button">Copier les résultats</button>
+          <button id="lab-copy" class="btn" type="button">Copier les résultats</button>
         </div>
         <p class="muted small">
           « Mots faux » = taux d’erreur de mots par rapport à la phrase lue (0 % = identique).

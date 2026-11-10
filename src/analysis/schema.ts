@@ -36,12 +36,12 @@ export const DEBRIEF_SCHEMA = {
             type: 'string',
             description: 'One or two short sentences in French: the rule, simply.',
           },
-          recast_by_jake: {
+          recast_by_character: {
             type: 'boolean',
-            description: 'True if Jake reused the correct form in his next turn.',
+            description: 'True if the character reused the correct form in their next turn.',
           },
         },
-        required: ['turn', 'type', 'said', 'correct', 'explanation_fr', 'recast_by_jake'],
+        required: ['turn', 'type', 'said', 'correct', 'explanation_fr', 'recast_by_character'],
       },
     },
     vocabulary: {
@@ -99,7 +99,7 @@ export function parseDebrief(
       said,
       correct,
       explanationFr: str(m.explanation_fr),
-      recastByJake: m.recast_by_jake === true,
+      recastByCharacter: m.recast_by_character === true,
     });
   }
   const vocabulary: VocabItem[] = arr(j.vocabulary)

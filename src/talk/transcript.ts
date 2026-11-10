@@ -1,6 +1,6 @@
 import type { TranscriptSource } from '../settings';
 
-export type Speaker = 'you' | 'jake';
+export type Speaker = 'you' | 'buddy';
 
 export interface Turn {
   id: number;
@@ -14,13 +14,13 @@ export interface Turn {
   /** Where `text` comes from. */
   source: TranscriptSource;
   /**
-   * open: still receiving text; cut: Jake started answering (late chunks
+   * open: still receiving text; cut: the character started answering (late chunks
    * still accepted); closed: finished.
    */
   state: 'open' | 'cut' | 'closed';
   /** A second recogniser is still working on this learner turn. */
   pending: boolean;
-  /** Jake was cut off by the learner. */
+  /** The character was cut off by the learner. */
   interrupted: boolean;
   /** ms since the start of the talk. */
   at: number;
@@ -81,7 +81,7 @@ export class Transcript {
   }
 
   /**
-   * Jake starts answering: the learner's turn ends. Returns the turn a clip
+   * The character starts answering: the learner's turn ends. Returns the turn a clip
    * of the learner's audio belongs to (created if the Live text lags behind),
    * or null when the learner said nothing.
    */
@@ -99,16 +99,16 @@ export class Transcript {
     return turn;
   }
 
-  /** Jake's turn is over (finished or interrupted). */
+  /** The character's turn is over (finished or interrupted). */
   completeModelTurn(interrupted: boolean): void {
-    const jake = this.lastActive('jake');
-    if (jake) {
-      jake.state = 'closed';
-      jake.interrupted = interrupted;
-      this.onChange?.(jake);
+    const buddy = this.lastActive('buddy');
+    if (buddy) {
+      buddy.state = 'closed';
+      buddy.interrupted = interrupted;
+      this.onChange?.(buddy);
     }
-    // A learner turn that Jake already answered is over too; one that is
-    // still open (the learner talking over Jake) carries on.
+    // A learner turn that the character already answered is over too; one that is
+    // still open (the learner talking over the character) carries on.
     for (const t of this.turns) if (t.who === 'you' && t.state === 'cut') t.state = 'closed';
   }
 

@@ -10,6 +10,9 @@ export interface SavedTalk {
   startedAt: number;
   durationMs: number;
   label: string;
+  /** Who and where (phase 2+); talks from phase 1 were with Jake at the café. */
+  character?: string;
+  scene?: string;
   turns: Pick<Turn, 'id' | 'who' | 'text' | 'liveText' | 'source' | 'interrupted'>[];
   debrief: Debrief | null;
   /** Explanations already fetched, by mistake index. */
@@ -49,7 +52,27 @@ async function run<T>(
 
 export async function listTalks(): Promise<SavedTalk[]> {
   const all = (await run<SavedTalk[]>('readonly', (s) => s.getAll())) ?? [];
-  return all.sort((a, b) => b.startedAt - a.startedAt);
+  return all.map(upgradeTalk).sort((a, b) => b.startedAt - a.startedAt);
+}
+
+/**
+ * Talks saved in phase 1 used `who: 'jake'` and `recastByJake`; they are
+ * read with the phase 2 names.
+ */
+export function upgradeTalk(t: SavedTalk): SavedTalk {
+  const turns = t.turns.map((x) =>
+    (x.who as string) === 'jake' ? { ...x, who: 'buddy' as const } : x,
+  );
+  const debrief = t.debrief && {
+    ...t.debrief,
+    mistakes: t.debrief.mistakes.map((m) => {
+      const old = m as typeof m & { recastByJake?: boolean };
+      return old.recastByCharacter === undefined
+        ? { ...m, recastByCharacter: old.recastByJake === true }
+        : m;
+    }),
+  };
+  return { ...t, character: t.character ?? 'jake', scene: t.scene ?? 'cafe', turns, debrief };
 }
 
 export async function saveTalk(talk: SavedTalk): Promise<void> {

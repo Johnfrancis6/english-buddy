@@ -1,6 +1,6 @@
 # État du projet — English Buddy
 
-Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 1).
+Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 2, mode autopilote).
 
 ## Où on en est
 
@@ -10,8 +10,11 @@ Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 1).
   [docs/tests/phase-1.md](tests/phase-1.md).
 - Lien de test : <https://johnfrancis6.github.io/english-buddy/> (et le labo :
   <https://johnfrancis6.github.io/english-buddy/lab.html>).
-- Prochaine étape : retour de Franco (labo transcription, conversation,
-  bilan), puis go / no-go pour la phase 2.
+- **Phase 2 construite** (personnages et scènes), branche `phase-2` (partie
+  de `phase-1`), guide [docs/tests/phase-2.md](tests/phase-2.md). Le site
+  de test montre la dernière branche poussée, donc la phase 2.
+- Prochaine étape (autopilote) : phase 3, ouverte par la session
+  orchestratrice. Franco teste les guides 1 puis 2 à son retour.
 
 ## Mode autopilote (Franco absent)
 
@@ -26,8 +29,56 @@ amis et avant la fusion dans `main`.
 - [ ] Tester les guides `docs/tests/phase-1.md`, puis phase 2, 3… dans
       l'ordre, et donner les remarques.
 - [ ] Phase 1 : labo transcription (choisit la source qui garde les fautes).
+- [ ] Phase 2 : images par seconde sur la GTX 1070 (café, bureau, rue),
+      accents britannique / américain, voix Kore, Aoede, Orus, Leda
+      acceptées ou non, gestes (naturels ? au bon moment ?), choix des
+      personnages (modèles VRoid gratuits, style manga).
 - [ ] Ouvrir la pull request finale vers `main` et la fusionner (ou la
       demander à Claude).
+
+## Auto-critique de la phase 2
+
+Ce qui marche (mesuré dans la session de construction, Google **simulé**,
+Chromium sans carte graphique) :
+
+- Accueil avec choix du lieu et du personnage, aperçu 3D en direct, choix
+  gardé ; cinq personnages qui se chargent (4 à 5 Mo chacun au lieu de 13 à
+  18 Mo, sans différence visible) ; trois décors toon.
+- Entrée en marchant, gestes (salut, hochement, rire, réflexion, check du
+  poing) visibles sur captures ; déclenchés par la conversation : salut au
+  premier mot du personnage, rire sur « haha », hochements quand
+  l'apprenant parle (tests de logique et test Playwright avec Emma).
+- Le prompt, la voix et le bilan suivent le personnage (Emma : accent
+  britannique demandé, voix Kore, « Emma l'a reformulé »). Les conversations
+  de la phase 1 se relisent.
+- Coût de dessin mesuré : 130–300 appels, 40–55 k triangles par image.
+- Lint, 68 tests de logique, 5 tests Playwright au vert.
+
+Ce qui est **supposé, pas mesuré** :
+
+- La fluidité sur la GTX 1070 : ici 2 à 8 images/s en rendu logiciel (CPU),
+  sans valeur pour une vraie carte. Vu le coût de dessin (faible), j'attends
+  55–60 images/s, mais c'est Franco qui mesure (ligne « Images/s »).
+- Que `gemini-3.8-live` accepte les voix Kore, Aoede, Orus et Leda (dans la
+  liste officielle, mais seule Puck a été essayée avec une vraie clé) et
+  prenne vraiment l'accent britannique demandé dans le prompt.
+- Le bon moment des gestes avec une vraie voix : la transcription du
+  personnage arrive à peu près avec le son, mais le décalage réel n'est pas
+  mesuré ; le rire n'apparaît que si le modèle écrit « haha ».
+
+Ce qui est faible :
+
+- Les gestes sont écrits à la main : sobres mais un peu mécaniques ; la
+  marche est simple (pas de pieds plantés au sol). Amélioration possible :
+  des clips CC0 adaptés au squelette VRM.
+- Les personnages sont des modèles d'exemple VRoid (style manga, tous
+  jeunes d'apparence) : Emma « 35 ans » et Lily « 9 ans » ne font pas
+  vraiment leur âge. Trois modèles sur cinq ne sont pas CC0 (conditions
+  pixiv : redistribution gratuite autorisée).
+- Décors en formes simples : lisibles et légers, mais pauvres en détails.
+- Le faux micro du navigateur de test déclenche « réfléchir » : la logique
+  de « réflexion » dépend du détecteur de voix du micro, qui peut se
+  tromper avec du bruit.
 
 ## Auto-critique de la phase 1
 
@@ -111,9 +162,9 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Après le go de Franco sur la phase 1 : phase 2 (personnages et scènes),
-  modèle conseillé **Opus 5.5**, branche `phase-2`, ouverte par cette session
-  (règle de CLAUDE.md).
+- Autopilote : phase 3 (comptes et suivi), modèle conseillé **Opus 5.5**,
+  branche `phase-3` créée depuis `phase-2`, ouverte par la session
+  orchestratrice.
 
 ## Journal
 
@@ -128,21 +179,30 @@ Ce qui est faible :
 | 2026-11-10 | Phase 0 (mesure) | 4ᵉ rapport, réglage « Posé » (900 ms) actif dès le départ : médiane **1,42 s** sur 7 tours (1 min 14), soit environ +0,4 s par rapport à « Rapide », comme prévu | Ressenti (coupures, transcription) à confirmer |
 | 2026-11-10 | Phase 0 (validation) | Les deux rythmes gardés, « Rapide » par défaut | « Oui il me laisse finir, feu vert pour la phase 1 » ; « je veux les deux délais, je passerai sur 500 pour une meilleure fluidité » |
 | 2026-11-10 | Phase 1 | Prompt complet de Jake (reprise sans leçon, tours courts, questions ouvertes), texte en direct, labo transcription (Gemini Live / Groq Whisper / Gemini Flash), bilan JSON en français par type de faute, bouton « Pourquoi ? », conversations en texte dans le navigateur. Testé avec Google et Groq simulés, aucune vraie conversation | En attente |
+| 2026-11-10 | Phase 2 | DESIGN.md + styles partagés ; accueil (lieu + personnage) ; 5 personnages VRoid gratuits allégés (Jake, Emma, Maya, Ollie en veste, Lily 9 ans) ; décors toon café / bureau / rue ; marche, salut, hochement, rire, réflexion, check du poing déclenchés par la conversation ; voix et prompt par personnage ; mesures repliables avec images/s. Testé avec Google simulé, sans GPU | En attente (autopilote) |
 
 ## Points ouverts
 
 - Nom définitif de la plateforme (provisoire : « English Buddy »).
 - Quatrième personnage (conférence / école) : hors version 1.
-- Fiches personnages `docs/characters.md` (Jake, Emma, Maya) pour VRoid
-  Studio : à écrire au plus tard au début de la phase 2 (le brief les
-  attend « à partir de la phase 0 »).
+- Fiches personnages `docs/characters.md` : plus nécessaires (Franco ne crée
+  plus les personnages) ; les personas sont dans `src/teaching/persona.ts`.
+- Gestes plus naturels : clips d'animation CC0 (par exemple Quaternius)
+  adaptés au squelette VRM, si Franco trouve les gestes faits main trop
+  raides. Chanter et danser (Maya) : phase 6.
+- Voix britanniques de la « Extended Voice Library » de Google
+  (`GET /v1beta/voices`) : à essayer avec une clé, si l'accent demandé dans
+  le prompt ne suffit pas.
+- Personnages plus âgés ou plus réalistes (Emma 35 ans) : chercher d'autres
+  modèles VRM libres si Franco le demande.
+- Mobile hors périmètre : l'accueil s'affiche sur un écran étroit, mais rien
+  n'est testé sur téléphone.
 - Noms des voix Gemini (« Puck »…) non vérifiés dans la doc officielle.
 - Garde-fou d'écho : seule l'annulation d'écho du navigateur est activée ;
   à revoir si quelqu'un utilise des haut-parleurs.
 - Le site Pages affiche la dernière branche poussée (`main` ou `phase-*`) :
   à revoir quand `main` servira de version stable (phase 8).
-- Poids du modèle 3D (18 Mo) : à réduire quand Franco exportera ses propres
-  personnages.
+- Poids des modèles 3D : réglé en phase 2 (4–5 Mo chacun, textures WebP).
 - Détection « intelligente » des phrases inachevées (distinguer une
   hésitation d'une fin de phrase) : l'API Gemini ne propose qu'une durée de
   silence. Une vraie détection demanderait notre propre détecteur dans le

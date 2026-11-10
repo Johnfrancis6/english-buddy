@@ -1,23 +1,27 @@
 import type { Turn } from '../talk/transcript';
 import { el } from './dom';
 
-const WHO = { you: 'Toi', jake: 'Jake' } as const;
-
 /** Live transcript on screen; one paragraph per turn, updated in place. */
 export class TranscriptView {
   private readonly rows = new Map<number, HTMLElement>();
+  /** Name shown for the character's lines. */
+  characterName = 'Jake';
   constructor(private readonly root: HTMLElement) {}
 
   clear(): void {
     this.rows.clear();
-    this.root.replaceChildren();
+    this.root.replaceChildren(
+      el('p', { class: 'empty muted small', text: 'Le texte de la conversation s’affichera ici.' }),
+    );
   }
 
   update(turn: Turn): void {
     let row = this.rows.get(turn.id);
     if (!row) {
+      this.root.querySelector('.empty')?.remove();
       row = el('p', { class: turn.who, 'data-turn': String(turn.id) });
-      row.append(el('span', { class: 'who', text: `${WHO[turn.who]} :` }), el('span'));
+      const name = turn.who === 'you' ? 'Toi' : this.characterName;
+      row.append(el('span', { class: 'who', text: `${name} :` }), el('span', { lang: 'en' }));
       this.root.append(row);
       this.rows.set(turn.id, row);
     }

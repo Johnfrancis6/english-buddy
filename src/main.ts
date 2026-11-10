@@ -20,7 +20,10 @@ import { friendly, type FriendlyError } from './voice/errors';
 import { GeminiLiveSession } from './voice/geminiLive';
 import { LatencyTracker } from './voice/latency';
 import type { VoiceState } from './voice/types';
-import { buildSystemPrompt, DEFAULT_LEARNER, JAKE } from './teaching/persona';
+import { buildSystemPrompt, DEFAULT_LEARNER, type SceneId } from './teaching/persona';
+import { CAST, castMember, SCENES, sceneInfo, type CastMember } from './cast';
+import { GestureDirector } from './scene/director';
+import { GESTURES } from './scene/gestures';
 import { Transcript, type Turn } from './talk/transcript';
 import { ClipRecorder } from './transcribe/clip';
 import { makeTranscriber } from './transcribe/factory';
@@ -34,7 +37,9 @@ import { TranscriptView } from './ui/transcriptView';
 import { debriefText, renderDebrief } from './ui/debriefView';
 import { el } from './ui/dom';
 
-const CHARACTER_URL = `${import.meta.env.BASE_URL}models/HairSample_Male.vrm`;
+const modelUrl = (c: CastMember) => `${import.meta.env.BASE_URL}models/${c.model}`;
+const picture = (kind: 'scenes' | 'people', id: string) =>
+  `${import.meta.env.BASE_URL}pictures/${kind}/${id}.webp`;
 const TARGET_MS = 1500;
 /** Longest wait for the second recogniser before the debrief starts anyway. */
 const PENDING_WAIT_MS = 15_000;
@@ -43,6 +48,17 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const canvas = $<HTMLCanvasElement>('stage');
 const startBtn = $<HTMLButtonElement>('start');
 const lipBtn = $<HTMLButtonElement>('lip-test');
+const gestureBtn = $<HTMLButtonElement>('gesture-test');
+const homePanel = $('home');
+const measures = $('measures');
+/** On the home screen the character stands right of the panel. */
+const homeShift = () => (window.innerWidth > 760 ? 0.2 : 0);
+const homeStatus = $('home-status');
+const enterBtn = $<HTMLButtonElement>('enter');
+const controls = document.querySelector<HTMLElement>('.controls')!;
+const talkHint = $('talk-hint');
+const dFps = $('d-fps');
+const dGesture = $('d-gesture');
 const debriefBtn = $<HTMLButtonElement>('open-debrief');
 const dState = $('d-state');
 const dMedian = $('d-median');
@@ -69,14 +85,15 @@ const debriefDialog = $<HTMLDialogElement>('debrief');
 const debriefStatus = $('debrief-status');
 const debriefBody = $('debrief-body');
 
-const STATE_LABELS: Record<VoiceState, string> = {
-  idle: 'Prêt — clique sur « Démarrer »',
-  connecting: 'Connexion à Jake…',
-  listening: 'Jake t’écoute',
-  speaking: 'Jake parle',
-  reconnecting: 'Reconnexion…',
-  error: 'Arrêté sur une erreur',
-};
+const stateLabel = (state: VoiceState, name: string): string =>
+  ({
+    idle: 'Prêt — clique sur « Démarrer »',
+    connecting: `Connexion à ${name}…`,
+    listening: `${name} t’écoute`,
+    speaking: `${name} parle`,
+    reconnecting: 'Reconnexion…',
+    error: 'Arrêté sur une erreur',
+  })[state];
 const SOURCE_LABEL = Object.fromEntries(TRANSCRIPT_SOURCES.map((s) => [s.id, s.label])) as Record<
   TranscriptSource,
   string
@@ -90,30 +107,167 @@ let overlapsSeen = 0;
 /** What the running (or last) conversation was started with. */
 let sessionLabel = '—';
 
-// ---------------------------------------------------------------- 3D stage
+// ------------------------------------------------------- 3D stage + home
 const stage = new Stage(canvas);
-stage
-  .loadCharacter(CHARACTER_URL, (r) => {
-    dState.textContent = `Chargement de Jake… ${Math.round(r * 100)} %`;
-  })
-  .then(() => {
+/** What is chosen on the home screen (saved in the settings). */
+let sceneId: SceneId = settings.scene;
+let member: CastMember = castMember(settings.character);
+/** The learner is in the scene (home closed). */
+let inScene = false;
+let director: GestureDirector | null = null;
+let firstAnswer = true;
+
+function applyCharacterLook(): void {
+  document.body.style.setProperty('--buddy', member.colour);
+  transcriptView.characterName = member.character.name;
+  canvas.setAttribute('aria-label', `${sceneInfo(sceneId).labelFr} avec ${member.character.name}`);
+  canvas.dataset.character = member.id;
+  canvas.dataset.scene = sceneId;
+}
+
+/** Shows the chosen character (cached after the first download). */
+async function showCharacter(opts: { walkIn?: boolean } = {}): Promise<void> {
+  const wanted = member;
+  characterReady = false;
+  canvas.dataset.ready = 'false';
+  startBtn.disabled = true;
+  enterBtn.disabled = true;
+  const name = wanted.character.name;
+  const progress = (r: number) => {
+    const text = `Chargement de ${name}… ${Math.round(r * 100)} %`;
+    homeStatus.textContent = text;
+    dState.textContent = text;
+  };
+  try {
+    await stage.loadCharacter(modelUrl(wanted), progress, opts);
+    if (wanted !== member) return; // another choice was made meanwhile
     characterReady = true;
     canvas.dataset.ready = 'true';
-    startBtn.disabled = false;
+    homeStatus.textContent = '';
+    enterBtn.disabled = false;
     lipBtn.disabled = false;
+    gestureBtn.disabled = false;
+    if (!opts.walkIn) startBtn.disabled = false;
     renderState(voice.state);
-    if (!settings.apiKey) openSettings();
-  })
-  .catch((err: unknown) => {
+  } catch (err: unknown) {
     canvas.dataset.ready = 'error';
-    dState.textContent = 'Jake n’a pas pu être chargé';
+    const text = `${name} n’a pas pu être chargé. Vérifie ta connexion, puis choisis à nouveau.`;
+    homeStatus.textContent = text;
+    dState.textContent = text;
+    enterBtn.disabled = false;
     log(`Chargement du personnage impossible : ${String(err)}`);
-  });
+  }
+}
+
+stage.onArrived = () => {
+  if (!inScene) return;
+  startBtn.disabled = !characterReady;
+  talkHint.textContent = `Clique sur « Démarrer » et dis bonjour à ${member.character.name}.`;
+};
+
+function card(
+  kind: 'scenes' | 'people',
+  id: string,
+  title: string,
+  lines: string[],
+  onPick: () => void,
+): HTMLButtonElement {
+  const img = el('img', { src: picture(kind, id), alt: '', loading: 'lazy' });
+  img.addEventListener('error', () => img.remove(), { once: true });
+  const button = el(
+    'button',
+    { class: 'card', type: 'button', 'data-id': id, 'aria-pressed': 'false' },
+    img,
+    el('strong', { text: title }),
+    ...lines.map((t) => el('span', { class: 'small muted', text: t })),
+  );
+  button.addEventListener('click', onPick);
+  return button;
+}
+
+function renderHome(): void {
+  $('scene-cards').replaceChildren(
+    ...SCENES.map((x) =>
+      card('scenes', x.id, x.labelFr, [x.blurbFr], () => {
+        if (sceneId === x.id) return;
+        sceneId = x.id;
+        member = castMember(x.host);
+        choose();
+      }),
+    ),
+  );
+  $('character-cards').replaceChildren(
+    ...CAST.map((c) =>
+      card('people', c.id, c.character.name, [`${c.ageFr} · ${c.accentFr}`, c.roleFr], () => {
+        if (member.id === c.id) return;
+        member = c;
+        choose();
+      }),
+    ),
+  );
+  markChoice();
+}
+
+function markChoice(): void {
+  for (const b of document.querySelectorAll<HTMLButtonElement>('#scene-cards .card')) {
+    b.setAttribute('aria-pressed', String(b.dataset.id === sceneId));
+  }
+  for (const b of document.querySelectorAll<HTMLButtonElement>('#character-cards .card')) {
+    b.setAttribute('aria-pressed', String(b.dataset.id === member.id));
+  }
+  $('home-about').textContent = `${member.character.name} : ${member.blurbFr}`;
+  enterBtn.textContent = `Entrer : ${sceneInfo(sceneId).labelFr.toLowerCase()} avec ${member.character.name}`;
+}
+
+/** A card was picked: update the preview and remember the choice. */
+function choose(): void {
+  settings = { ...loadSettings(), scene: sceneId, character: member.id };
+  saveSettings(settings);
+  markChoice();
+  stage.setScene(sceneId);
+  applyCharacterLook();
+  void showCharacter();
+}
+
+function openHome(): void {
+  if (voice.state !== 'idle' && voice.state !== 'error') return;
+  inScene = false;
+  homePanel.hidden = false;
+  measures.hidden = true;
+  stage.setViewShift(homeShift());
+  controls.hidden = true;
+  transcriptPanel.hidden = true;
+  $('open-home').hidden = true;
+  markChoice();
+}
+
+function enterScene(): void {
+  if (!characterReady) return;
+  inScene = true;
+  homePanel.hidden = true;
+  measures.hidden = false;
+  stage.setViewShift(0);
+  controls.hidden = false;
+  transcriptPanel.hidden = false;
+  $('open-home').hidden = false;
+  startBtn.disabled = true;
+  talkHint.textContent = `${member.character.name} arrive…`;
+  renderSourceLabel();
+  stage.walkIn();
+  log(`Scène : ${sceneInfo(sceneId).labelFr}, avec ${member.character.name}`);
+  if (!loadSettings().apiKey) openSettings();
+}
+
+enterBtn.addEventListener('click', enterScene);
+$('open-home').addEventListener('click', openHome);
+$('home-debrief').addEventListener('click', () => debriefBtn.click());
 
 // ------------------------------------------------------------- the talk
 /** Everything about the conversation in progress (text only). */
 interface Talk {
   id: string;
+  character: CastMember;
+  scene: SceneId;
   startedAt: number;
   transcript: Transcript;
   source: TranscriptSource;
@@ -127,6 +281,7 @@ interface Talk {
 let talk: Talk | null = null;
 const transcriptView = new TranscriptView(transcriptBody);
 
+const stageTime = () => performance.now() / 1000;
 const player = new PcmPlayer();
 const latency = new LatencyTracker();
 const voice = new GeminiLiveSession(player, latency, {
@@ -135,19 +290,36 @@ const voice = new GeminiLiveSession(player, latency, {
   onModelTurnStart: (ms) => {
     if (ms !== null) log(`Délai de ce tour : ${formatMs(ms)}`);
     else if (latency.overlaps > overlapsSeen) {
-      log(`Jake a pris la parole pendant que tu parlais encore (${latency.overlaps} fois)`);
+      log(
+        `${member.character.name} a pris la parole pendant que tu parlais encore (${latency.overlaps} fois)`,
+      );
+    }
+    director?.buddyStarts();
+    director?.learnerTurnOver();
+    // The greeting comes with a wave.
+    if (firstAnswer) {
+      firstAnswer = false;
+      director?.talkStarted(stageTime());
     }
     overlapsSeen = latency.overlaps;
     renderLatency();
     if (talk) endLearnerTurn(talk);
   },
   onMicLevel: (rms, voiced) => {
+    director?.learnerFrame(stageTime(), voiced);
     dMic.style.width = `${Math.min(100, Math.round(rms * 500))}%`;
     dMic.classList.toggle('voiced', voiced);
   },
   onMicAudio: (pcm, voiced) => talk?.clip.push(pcm, voiced),
-  onTranscript: (who, text) => talk?.transcript.addLive(who, text),
-  onTurnComplete: (interrupted) => talk?.transcript.completeModelTurn(interrupted),
+  onTranscript: (who, text) => {
+    talk?.transcript.addLive(who, text);
+    if (who === 'buddy') director?.buddySays(text, stageTime());
+    else director?.learnerSays(text, stageTime());
+  },
+  onTurnComplete: (interrupted) => {
+    director?.buddyDone();
+    talk?.transcript.completeModelTurn(interrupted);
+  },
   onInfo: log,
 });
 
@@ -163,18 +335,26 @@ async function startTalk(): Promise<void> {
   if (source !== settings.transcriptSource) {
     log('Pas de clé Groq : la transcription Gemini Live est utilisée');
   }
+  const character = member.character;
+  const voiceName = settings.voiceOverride || member.voice;
   voice.configure({
     ...settings,
-    systemPrompt: buildSystemPrompt(JAKE, DEFAULT_LEARNER),
-    greeting: JAKE.greeting,
+    voice: voiceName,
+    systemPrompt: buildSystemPrompt(character, DEFAULT_LEARNER, sceneId),
+    greeting: character.greeting,
   });
-  sessionLabel = `${settings.model} · voix ${settings.voice} · pause ${settings.pauseMs} ms · texte : ${source}`;
+  director = new GestureDirector({ fistBump: member.fistBump }, (g) => stage.play(g));
+  firstAnswer = true;
+  talkHint.textContent = '';
+  sessionLabel = `${character.name} · ${sceneId} · ${settings.model} · voix ${voiceName} · pause ${settings.pauseMs} ms · texte : ${source}`;
   dModel.textContent = sessionLabel;
   overlapsSeen = 0;
   const transcript = new Transcript(source);
   transcript.onChange = (turn) => transcriptView.update(turn);
   talk = {
     id: `talk-${Date.now()}`,
+    character: member,
+    scene: sceneId,
     startedAt: Date.now(),
     transcript,
     source,
@@ -212,11 +392,12 @@ function endLearnerTurn(t: Talk): void {
 
 function renderState(state: VoiceState): void {
   if (!characterReady) return;
-  dState.textContent = STATE_LABELS[state];
+  dState.textContent = stateLabel(state, member.character.name);
   const live = state !== 'idle' && state !== 'error';
   startBtn.textContent = live ? 'Arrêter' : 'Démarrer';
   startBtn.classList.toggle('live', live);
   lipBtn.disabled = live;
+  $('open-home').hidden = live || !inScene;
   if (live && sessionStartedAt === null) {
     sessionStartedAt = performance.now();
     log('Conversation démarrée');
@@ -225,6 +406,8 @@ function renderState(state: VoiceState): void {
     log(`Conversation arrêtée après ${formatDuration(performance.now() - sessionStartedAt)}`);
     sessionStartedAt = null;
     dMic.style.width = '0';
+    director?.talkStopped(stageTime());
+    director = null;
     if (talk && !talk.ended) void finishTalk(talk);
   }
   if (state === 'listening' || state === 'speaking') hideError();
@@ -242,7 +425,21 @@ setInterval(() => {
   if (sessionStartedAt !== null) {
     dDuration.textContent = formatDuration(performance.now() - sessionStartedAt);
   }
+  const ds = stage.drawStats;
+  dFps.textContent = stage.fps
+    ? `${Math.round(stage.fps)} (${ds.calls} dessins, ${Math.round(ds.triangles / 1000)} k triangles)`
+    : '—';
+  canvas.dataset.draws = `${ds.calls}/${ds.triangles}`;
+  canvas.dataset.fps = stage.fps.toFixed(1);
+  const g = stage.activeGestures;
+  dGesture.textContent = g.length ? g.join(', ') : '—';
 }, 500);
+
+/** Plays every gesture once, to check them without a key. */
+gestureBtn.addEventListener('click', () => {
+  GESTURES.forEach((g, i) => setTimeout(() => stage.play(g), i * 2800));
+  log(`Test des gestes : ${GESTURES.join(', ')}`);
+});
 
 // ---------------------------------------------------------------- debrief
 let current: SavedTalk | null = null;
@@ -265,6 +462,8 @@ async function finishTalk(t: Talk): Promise<void> {
     startedAt: t.startedAt,
     durationMs: Date.now() - t.startedAt,
     label: sessionLabel,
+    character: t.character.id,
+    scene: t.scene,
     turns: turns.map(({ id, who, text, liveText, source, interrupted }) => ({
       id,
       who,
@@ -294,14 +493,16 @@ const analysisTurns = (s: SavedTalk): AnalysisTurn[] =>
 
 async function runDebrief(s: SavedTalk): Promise<void> {
   showDebrief(s);
-  debriefStatus.textContent = 'Jake prépare ton bilan… (10 à 30 secondes)';
+  const who = castMember(s.character ?? 'jake').character;
+  debriefStatus.textContent = 'Ton bilan arrive… (10 à 30 secondes)';
   debriefStatus.className = 'status busy';
   $('debrief-retry').hidden = true;
   try {
     const source = s.turns.find((x) => x.who === 'you')?.source ?? 'live';
     s.debrief = await analyzer().analyze(analysisTurns(s), {
       level: DEFAULT_LEARNER.level,
-      characterName: JAKE.name,
+      characterName: who.name,
+      characterDescription: who.shortDescription,
       transcriptSource: source === 'live' ? 'Gemini Live' : SOURCE_LABEL[source],
     });
     log(`Bilan prêt (${s.debrief.mistakes.length} fautes, modèle ${s.debrief.model})`);
@@ -318,13 +519,17 @@ async function runDebrief(s: SavedTalk): Promise<void> {
 
 function showDebrief(s: SavedTalk): void {
   current = s;
+  const who = castMember(s.character ?? 'jake');
   const when = new Date(s.startedAt).toLocaleString('fr-FR');
-  $('debrief-meta').textContent = `${when} · ${formatDuration(s.durationMs)}`;
+  $('debrief-meta').textContent =
+    `avec ${who.character.name} · ${sceneInfo(s.scene ?? 'cafe').labelFr.toLowerCase()} · ${when} · ${formatDuration(s.durationMs)}`;
+  debriefDialog.style.setProperty('--buddy', who.colour);
   debriefBody.replaceChildren();
   debriefStatus.textContent = '';
   debriefStatus.className = 'status';
   if (s.debrief) {
     renderDebrief(debriefBody, s.debrief, {
+      characterName: who.character.name,
       known: s.why,
       why: async (index, mistake) => {
         const text = await analyzer()
@@ -343,7 +548,7 @@ function showDebrief(s: SavedTalk): void {
       el(
         'p',
         { class: x.who },
-        el('span', { class: 'who', text: x.who === 'you' ? 'Toi :' : 'Jake :' }),
+        el('span', { class: 'who', text: x.who === 'you' ? 'Toi :' : `${who.character.name} :` }),
         ` ${x.text}`,
       ),
     ),
@@ -355,6 +560,7 @@ async function persist(s: SavedTalk): Promise<void> {
   try {
     await saveTalk(s);
     debriefBtn.hidden = false;
+    $('home-debrief').hidden = false;
   } catch (err) {
     log(`Conversation non sauvegardée dans le navigateur : ${String(err)}`);
   }
@@ -378,7 +584,10 @@ $('debrief-copy').addEventListener('click', () => {
   );
 });
 void listTalks()
-  .then((all) => (debriefBtn.hidden = all.length === 0))
+  .then((all) => {
+    debriefBtn.hidden = all.length === 0;
+    $('home-debrief').hidden = all.length === 0;
+  })
   .catch(() => {
     /* IndexedDB unavailable (private window): the debrief still shows */
   });
@@ -404,6 +613,8 @@ function lipSyncFrame(now: number): void {
   // Exposed for the smoke test and for debugging: how open the mouth is.
   canvas.dataset.mouth = (mouth.aa + mouth.ih + mouth.ou + mouth.ee + mouth.oh).toFixed(2);
   canvas.dataset.frames = String(stage.frames);
+  canvas.dataset.gestures = stage.activeGestures.join(' ');
+  canvas.dataset.walking = String(stage.walking);
   requestAnimationFrame(lipSyncFrame);
 }
 requestAnimationFrame(lipSyncFrame);
@@ -471,6 +682,7 @@ $('error-close').addEventListener('click', hideError);
 
 // ---------------------------------------------------------------- settings
 for (const m of MODELS) modelSelect.add(new Option(m.label, m.id));
+voiceSelect.add(new Option('Celle du personnage (recommandé)', ''));
 for (const v of VOICES) voiceSelect.add(new Option(v, v));
 for (const x of PAUSES) pauseSelect.add(new Option(x.label, String(x.ms)));
 for (const x of TRANSCRIPT_SOURCES) sourceSelect.add(new Option(x.label, x.id));
@@ -489,7 +701,7 @@ function openSettings(): void {
   keyInput.value = settings.apiKey;
   groqInput.value = settings.groqKey;
   modelSelect.value = settings.model;
-  voiceSelect.value = settings.voice;
+  voiceSelect.value = settings.voiceOverride;
   pauseSelect.value = String(settings.pauseMs);
   sourceSelect.value = settings.transcriptSource;
   analysisSelect.value = settings.analysisModel;
@@ -509,6 +721,7 @@ $('clear-talks').addEventListener('click', () => {
   void clearTalks().then(
     () => {
       debriefBtn.hidden = true;
+      $('home-debrief').hidden = true;
       current = null;
       log('Conversations effacées de ce navigateur');
       keyStatus.textContent = 'Conversations effacées de ce navigateur.';
@@ -519,10 +732,11 @@ $('clear-talks').addEventListener('click', () => {
 settingsDialog.addEventListener('close', () => {
   if (settingsDialog.returnValue !== 'save') return;
   saveSettings({
+    ...loadSettings(),
     apiKey: keyInput.value,
     groqKey: groqInput.value,
     model: modelSelect.value || DEFAULTS.model,
-    voice: voiceSelect.value || DEFAULTS.voice,
+    voiceOverride: voiceSelect.value,
     pauseMs: Number(pauseSelect.value) || DEFAULTS.pauseMs,
     transcriptSource: (sourceSelect.value || DEFAULTS.transcriptSource) as TranscriptSource,
     analysisModel: analysisSelect.value || DEFAULTS.analysisModel,
@@ -556,15 +770,16 @@ $('copy-report').addEventListener('click', () => {
   const turns: Turn[] = talk?.transcript.turns ?? [];
   const learner = turns.filter((x) => x.who === 'you' && x.text.trim());
   const report = [
-    'English Buddy — rapport de test phase 1',
+    'English Buddy — rapport de test phase 2',
     `Date : ${new Date().toLocaleString('fr-FR')}`,
     `Conversation lancée avec : ${sessionLabel}`,
     `État : ${dState.textContent}`,
     `Délai médian : ${dMedian.textContent} ${dCount.textContent}`,
     `Dernier délai : ${dLast.textContent}`,
-    `Jake a parlé pendant que tu parlais encore : ${latency.overlaps} fois`,
+    `Le personnage a parlé pendant que tu parlais encore : ${latency.overlaps} fois`,
+    `Images par seconde : ${stage.fps.toFixed(0)} ; écran ${window.innerWidth}×${window.innerHeight} × ${window.devicePixelRatio}`,
     `Durée affichée : ${dDuration.textContent}`,
-    `Tours : ${learner.length} de toi, ${turns.filter((x) => x.who === 'jake').length} de Jake ; interruptions de Jake : ${turns.filter((x) => x.interrupted).length}`,
+    `Tours : ${learner.length} de toi, ${turns.filter((x) => x.who === 'buddy').length} du personnage ; interruptions du personnage : ${turns.filter((x) => x.interrupted).length}`,
     `Transcription : ${talk ? SOURCE_LABEL[talk.source] : '—'} ; échecs du 2ᵉ reconnaisseur : ${talk?.transcribeErrors ?? 0}`,
     `Bilan : ${current?.debrief ? `${current.debrief.mistakes.length} fautes, modèle ${current.debrief.model}` : 'aucun'}`,
     `Navigateur : ${navigator.userAgent}`,
@@ -589,3 +804,16 @@ function formatDuration(ms: number): string {
   const s = Math.floor(ms / 1000);
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
+
+// Test hook (Playwright and manual checks): the stage, to trigger gestures.
+(window as unknown as { __stage: Stage }).__stage = stage;
+
+// ------------------------------------------------------------------- start
+stage.setScene(sceneId);
+applyCharacterLook();
+renderHome();
+measures.hidden = true;
+stage.setViewShift(homeShift());
+void showCharacter();
+// The other characters download in the background once the first is shown.
+setTimeout(() => CAST.forEach((c) => stage.preload(modelUrl(c))), 4000);

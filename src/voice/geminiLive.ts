@@ -262,7 +262,8 @@ export class GeminiLiveSession implements VoiceSession {
       );
     }
     if (sc.inputTranscription?.text) this.events.onTranscript('you', sc.inputTranscription.text);
-    if (sc.outputTranscription?.text) this.events.onTranscript('jake', sc.outputTranscription.text);
+    if (sc.outputTranscription?.text)
+      this.events.onTranscript('buddy', sc.outputTranscription.text);
     if (sc.turnComplete) {
       this.inModelTurn = false;
       this.events.onTurnComplete(false);
