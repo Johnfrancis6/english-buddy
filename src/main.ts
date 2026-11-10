@@ -44,6 +44,15 @@ import { buildLearnerProfile } from './progress/profile';
 import { buildProgress } from './progress/stats';
 import { renderMemory } from './ui/memoryView';
 import { renderProgress } from './ui/progressView';
+import {
+  cloudConfig,
+  isProjectUrl,
+  makeCloud,
+  rememberDeleted,
+  saveCloudConfig,
+  syncOnce,
+} from './sync/config';
+import type { CloudSync } from './sync/types';
 import { TranscriptView } from './ui/transcriptView';
 import { debriefText, renderDebrief } from './ui/debriefView';
 import { el } from './ui/dom';
@@ -549,6 +558,7 @@ async function runDebrief(s: SavedTalk): Promise<void> {
     log(`Bilan prêt (${s.debrief.mistakes.length} fautes, modèle ${s.debrief.model})`);
     await persist(s);
     await remember(s, facts);
+    void autoSync();
     if (current?.id === s.id) showDebrief(s);
   } catch (err) {
     const e = asProviderError(err, 'gemini');
@@ -673,6 +683,7 @@ async function openMemory(): Promise<void> {
       },
       remove: async (id) => {
         await deleteFact(id);
+        rememberDeleted([id]);
         memoryStatus.textContent = 'Effacé.';
       },
       add: async (category, text) => {
@@ -731,11 +742,106 @@ $('memory-close').addEventListener('click', () => memoryDialog.close());
 $('progress-close').addEventListener('click', () => progressDialog.close());
 $('memory-clear').addEventListener('click', () => {
   if (!confirm('Effacer tout ce que les personnages savent de toi ?')) return;
-  void clearFacts().then(
-    () => openMemory().then(() => (memoryStatus.textContent = 'Tout est effacé.')),
-    () => (memoryStatus.textContent = 'Effacement impossible.'),
+  void listFacts()
+    .then((all) => rememberDeleted(all.map((f) => f.id)))
+    .catch(() => {})
+    .then(() => clearFacts())
+    .then(
+      () => openMemory().then(() => (memoryStatus.textContent = 'Tout est effacé.')),
+      () => (memoryStatus.textContent = 'Effacement impossible.'),
+    );
+});
+
+// ------------------------------------------------- optional account (cloud)
+const pageUrl = () => `${location.origin}${location.pathname}`;
+let cloud: CloudSync = makeCloud(pageUrl());
+const cloudStatus = $('cloud-status');
+
+async function renderCloud(): Promise<void> {
+  const override = cloudConfig();
+  $<HTMLInputElement>('cloud-url').value = override.url;
+  $<HTMLInputElement>('cloud-key').value = override.key;
+  $('cloud-signed-out').hidden = true;
+  $('cloud-signed-in').hidden = true;
+  if (!cloud.configured) {
+    cloudStatus.textContent =
+      'Les comptes ne sont pas encore activés : tout reste dans ce navigateur.';
+    return;
+  }
+  try {
+    const user = await cloud.currentUser();
+    if (user) {
+      cloudStatus.textContent = `Connecté : ${user.email}. Ta mémoire et le résumé de tes conversations (sans le texte complet) suivent ton compte.`;
+      $('cloud-signed-in').hidden = false;
+    } else {
+      cloudStatus.textContent =
+        'Facultatif : crée un compte pour retrouver tes progrès sur un autre ordinateur. Tu reçois un lien par e-mail, sans mot de passe.';
+      $('cloud-signed-out').hidden = false;
+    }
+  } catch (err) {
+    cloudStatus.textContent = `Le compte ne répond pas. Tout reste dans ce navigateur. Détail technique : ${String(err)}`;
+  }
+}
+
+/** Reads online, merges with this browser, writes both. */
+async function syncNow(): Promise<string> {
+  const [facts, talks] = await Promise.all([listFacts(), listTalks()]);
+  const merged = await syncOnce(cloud, { facts, talks });
+  await saveFacts(merged.facts);
+  const known = new Set(talks.map((t) => t.id));
+  const added = merged.talks.filter((t) => !known.has(t.id));
+  for (const t of added) await saveTalk(t);
+  return `Synchronisé : ${merged.facts.length} souvenir(s), ${merged.talks.length} conversation(s) (${added.length} nouvelle(s) ici).`;
+}
+
+async function autoSync(): Promise<void> {
+  if (!cloud.configured) return;
+  try {
+    if (!(await cloud.currentUser())) return;
+    log(await syncNow());
+  } catch (err) {
+    log(`Synchronisation impossible (tout reste dans ce navigateur) : ${String(err)}`);
+  }
+}
+
+$('cloud-link').addEventListener('click', () => {
+  const email = $<HTMLInputElement>('cloud-email').value.trim();
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    cloudStatus.textContent = 'Écris une adresse e-mail valide.';
+    return;
+  }
+  cloudStatus.textContent = 'Envoi du lien…';
+  cloud.sendMagicLink(email).then(
+    () =>
+      (cloudStatus.textContent = `Lien envoyé à ${email}. Ouvre-le sur cet ordinateur : tu reviendras ici, connecté.`),
+    (err: unknown) =>
+      (cloudStatus.textContent = `Le lien n’a pas pu être envoyé. Réessaie dans une minute. Détail technique : ${String(err)}`),
   );
 });
+$('cloud-sync').addEventListener('click', () => {
+  cloudStatus.textContent = 'Synchronisation…';
+  syncNow().then(
+    (text) => (cloudStatus.textContent = text),
+    (err: unknown) =>
+      (cloudStatus.textContent = `Synchronisation impossible. Tout reste dans ce navigateur. Détail technique : ${String(err)}`),
+  );
+});
+$('cloud-signout').addEventListener('click', () => {
+  void cloud.signOut().finally(() => void renderCloud());
+});
+$('cloud-save').addEventListener('click', () => {
+  const url = $<HTMLInputElement>('cloud-url').value;
+  const key = $<HTMLInputElement>('cloud-key').value;
+  if (url.trim() && !isProjectUrl(url)) {
+    cloudStatus.textContent = 'Adresse inattendue : elle ressemble à https://xxxx.supabase.co.';
+    return;
+  }
+  saveCloudConfig({ url, key });
+  cloud = makeCloud(pageUrl());
+  void renderCloud();
+});
+// Back from the sign-in link: supabase-js reads the session from the URL.
+if (cloud.configured) void autoSync();
 
 // ---------------------------------------------------------------- lip sync
 const analyser = voice.outputAnalyser;
@@ -852,6 +958,7 @@ function openSettings(): void {
   analysisSelect.value = settings.analysisModel;
   showTranscriptBox.checked = settings.showTranscript;
   keyStatus.textContent = keyStatusText(settings);
+  void renderCloud();
   settingsDialog.returnValue = '';
   settingsDialog.showModal();
 }

@@ -1,4 +1,15 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { factToRow, mergeCloud, rowToFact, rowToTalk, talkToRow } from '../src/sync/rows';
+import { SupabaseSync } from '../src/sync/supabaseSync';
+import {
+  deletedFacts,
+  isProjectUrl,
+  makeCloud,
+  rememberDeleted,
+  saveCloudConfig,
+  syncOnce,
+} from '../src/sync/config';
 import {
   factsForAnalyzer,
   MAX_FACTS,
@@ -347,5 +358,144 @@ describe('learner profile in the prompt', () => {
     expect(prompt).not.toContain('What you remember');
     // The default profile (phase 1–2 callers) still works.
     expect(buildSystemPrompt(CHARACTERS.jake, DEFAULT_LEARNER, 'cafe')).toContain('B1');
+  });
+});
+
+describe('optional account (Supabase), no server', () => {
+  const memStore = () => {
+    const m = new Map<string, string>();
+    return {
+      getItem: (k: string) => m.get(k) ?? null,
+      setItem: (k: string, v: string) => void m.set(k, v),
+      removeItem: (k: string) => void m.delete(k),
+    };
+  };
+
+  it('is off until a project URL and key are given', () => {
+    const store = memStore();
+    expect(makeCloud('https://x/', store).configured).toBe(false);
+    saveCloudConfig({ url: 'https://abc.supabase.co', key: 'sb_publishable_x' }, store);
+    expect(makeCloud('https://x/', store).configured).toBe(true);
+    expect(isProjectUrl('https://abc.supabase.co')).toBe(true);
+    expect(isProjectUrl('https://evil.example.com')).toBe(false);
+  });
+
+  it('sends no transcript online and reads talks back without one', () => {
+    const t = talk(
+      'a',
+      NOW,
+      ['I go to the cinema. It was great.'],
+      {
+        summaryFr: 'privé',
+        mistakes: [mistake('verb_tense', 'I go', 'I went')],
+        skills: skills(50),
+      },
+      { speakingMs: 5000 },
+    );
+    const row = talkToRow(t, 'u1')!;
+    expect(JSON.stringify(row)).not.toContain('cinema');
+    expect(JSON.stringify(row)).not.toContain('privé');
+    expect(row).toMatchObject({ user_id: 'u1', learner_words: 8, learner_sentences: 2 });
+    expect(talkToRow(talk('b', NOW, ['x'], null), 'u1')).toBeNull();
+    const back = rowToTalk(row);
+    expect(back.turns).toEqual([]);
+    expect(talkStats(back)).toMatchObject({ learnerWords: 8, sentences: 2, speakingMs: 5000 });
+    const f = fact('f1', 'Aime le jazz.', { character: 'jake', category: 'last_talk' });
+    expect(rowToFact(factToRow(f, 'u1'))).toEqual(f);
+  });
+
+  it('merges: newest fact wins, erased facts stay erased, local talks win', () => {
+    const local = {
+      facts: [fact('a', 'Vieux.', { updatedAt: 1 }), fact('b', 'Gardé.', { updatedAt: 5 })],
+      talks: [talk('t1', NOW, ['local'])],
+    };
+    const remote = {
+      facts: [
+        fact('a', 'Récent.', { updatedAt: 9 }),
+        fact('b', 'Plus vieux.', { updatedAt: 2 }),
+        fact('c', 'Effacé ici.', { updatedAt: 9 }),
+      ],
+      talks: [talk('t1', NOW, []), talk('t2', NOW - DAY, [])],
+    };
+    const m = mergeCloud(local, remote, ['c']);
+    expect(m.facts.map((f) => f.text).sort()).toEqual(['Gardé.', 'Récent.']);
+    expect(m.talks.map((t) => t.id)).toEqual(['t1', 't2']);
+    expect(m.talks[0].turns).toHaveLength(1);
+  });
+
+  it('talks to Supabase with the documented calls, and deletes what was erased', async () => {
+    const calls: string[] = [];
+    const fake = {
+      auth: {
+        getSession: async () => ({
+          data: { session: { user: { id: 'u1', email: 'a@b.c' } } },
+          error: null,
+        }),
+        signInWithOtp: async (a: { email: string; options?: { emailRedirectTo?: string } }) => {
+          calls.push(`otp ${a.email} ${a.options?.emailRedirectTo}`);
+          return { error: null };
+        },
+        signOut: async () => ({ error: null }),
+      },
+      from: (table: string) => ({
+        select: async () => {
+          calls.push(`select ${table}`);
+          return {
+            data: table === 'learner_facts' ? [factToRow(fact('r', 'En ligne.'), 'u1')] : [],
+            error: null,
+          };
+        },
+        upsert: async (rows: object[]) => {
+          calls.push(`upsert ${table} ${rows.length}`);
+          return { error: null };
+        },
+        delete: () => ({
+          in: async (_c: string, ids: readonly string[]) => {
+            calls.push(`delete ${table} ${ids.join(',')}`);
+            return { error: null };
+          },
+        }),
+      }),
+    };
+    const cloud = new SupabaseSync(
+      'https://abc.supabase.co',
+      'k',
+      'https://site/',
+      async () => fake,
+    );
+    await cloud.sendMagicLink(' a@b.c ');
+    const store = memStore();
+    rememberDeleted(['gone'], store);
+    const merged = await syncOnce(
+      cloud,
+      { facts: [fact('l', 'Local.')], talks: [talk('t', NOW, ['hi'], {})] },
+      store,
+    );
+    expect(merged.facts.map((f) => f.id).sort()).toEqual(['l', 'r']);
+    expect(calls).toEqual([
+      'otp a@b.c https://site/',
+      'select learner_facts',
+      'select talk_summaries',
+      'upsert learner_facts 2',
+      'delete learner_facts gone',
+      'upsert talk_summaries 1',
+    ]);
+    expect(deletedFacts(store)).toEqual([]);
+  });
+
+  it('the SQL file turns on Row Level Security with an owner policy for every operation', () => {
+    const sql = readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8');
+    for (const table of ['learner_facts', 'talk_summaries']) {
+      expect(sql).toContain(`alter table public.${table} enable row level security`);
+      for (const op of ['select', 'insert', 'update', 'delete']) {
+        expect(sql).toMatch(new RegExp(`on public\\.${table} for ${op} to authenticated`));
+      }
+    }
+    expect(sql).toContain('(select auth.uid()) = user_id');
+    const code = sql
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('--'))
+      .join('\n');
+    expect(code).not.toMatch(/transcript|turns/i);
   });
 });

@@ -219,6 +219,42 @@
         </p>
         <label for="analysis-model">Modèle du bilan</label>
         <select id="analysis-model"></select>
+        <h3>Compte (facultatif)</h3>
+        <p id="cloud-status" class="muted small" aria-live="polite">
+          Les comptes ne sont pas encore activés : tout reste dans ce navigateur.
+        </p>
+        <div id="cloud-signed-out" hidden>
+          <label for="cloud-email">Ton adresse e-mail</label>
+          <input id="cloud-email" type="email" autocomplete="email" placeholder="toi@exemple.fr" />
+          <div class="row tight">
+            <button id="cloud-link" class="btn small" type="button">
+              Recevoir un lien de connexion
+            </button>
+          </div>
+        </div>
+        <div id="cloud-signed-in" class="row tight" hidden>
+          <button id="cloud-sync" class="btn small" type="button">Synchroniser maintenant</button>
+          <button id="cloud-signout" class="link" type="button">Se déconnecter</button>
+        </div>
+        <details class="advanced">
+          <summary>Projet Supabase (avancé)</summary>
+          <p class="muted small">
+            À remplir seulement pour essayer un autre projet. Adresse et clé publique se trouvent
+            dans Supabase, bouton « Connect » du projet.
+          </p>
+          <label for="cloud-url">Adresse du projet</label>
+          <input
+            id="cloud-url"
+            type="url"
+            spellcheck="false"
+            placeholder="https://xxxx.supabase.co"
+          />
+          <label for="cloud-key">Clé publique (publishable ou anon)</label>
+          <input id="cloud-key" type="text" spellcheck="false" placeholder="sb_publishable_…" />
+          <div class="row tight">
+            <button id="cloud-save" class="btn small" type="button">Utiliser ce projet</button>
+          </div>
+        </details>
         <p id="key-status" class="muted small"></p>
         <div class="row">
           <button id="save-settings" class="btn primary" value="save">Enregistrer</button>

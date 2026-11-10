@@ -655,3 +655,11 @@ body.page {
 .talk-list li > span:first-child {
   margin-right: auto;
 }
+.advanced {
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+}
+.advanced summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+}
