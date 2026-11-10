@@ -10,7 +10,7 @@
     <canvas id="stage" data-ready="false" role="img" aria-label="Scène 3D"></canvas>
 
     <header class="topbar">
-      <div class="brand">English Buddy <span class="chip">phase 6 · test</span></div>
+      <div class="brand">English Buddy <span class="chip">phase 7 · test</span></div>
       <div class="row tight">
         <button id="open-home" class="btn" type="button" hidden>Changer de scène</button>
         <button id="open-map" class="btn" type="button">Missions</button>
@@ -51,6 +51,13 @@
             <span id="pron-line" class="small muted"></span>
           </div>
           <button id="open-pron" class="btn small" type="button">M’entraîner</button>
+        </div>
+        <div class="today-row">
+          <div class="today-text">
+            <strong>Chanson</strong>
+            <span id="sing-line" class="small muted"></span>
+          </div>
+          <button id="open-songs" class="btn small" type="button">Chanter avec Maya</button>
         </div>
       </section>
       <h2>Le lieu</h2>
@@ -139,6 +146,9 @@
       </div>
     </div>
 
+    <!-- Karaoke (phase 7): under the character, never over the face. -->
+    <section id="sing" class="panel sing" aria-labelledby="sing-title" hidden></section>
+
     <footer class="controls" hidden>
       <p id="talk-hint" class="hint" aria-live="polite"></p>
       <div class="row tight center">
@@ -217,6 +227,42 @@
       <div id="pron-body"></div>
       <div class="row">
         <button id="pron-close" class="btn" type="button">Fermer</button>
+      </div>
+    </dialog>
+
+    <dialog id="songs" class="panel dialog songs" aria-labelledby="songs-title">
+      <div class="dialog-head">
+        <h2 id="songs-title" tabindex="-1">Chanter avec Maya</h2>
+        <span id="songs-meta" class="muted small"></span>
+      </div>
+      <p class="small">
+        Les mots s’allument au bon moment, tu chantes, et chaque mot reçoit deux notes :
+        prononciation et rythme. Maya ne chante pas les paroles : elle fredonne l’air, garde le
+        rythme et t’encourage.
+      </p>
+      <p class="note privacy small">
+        🔒 Ta voix reste en mémoire le temps d’être notée, puis elle est oubliée : rien n’est
+        enregistré. Seuls les paroles et les notes restent dans ce navigateur.
+      </p>
+      <div id="songs-body"></div>
+      <div class="row">
+        <button id="songs-close" class="btn" type="button">Fermer</button>
+      </div>
+    </dialog>
+
+    <dialog
+      id="sing-result"
+      class="panel dialog sing-result-dialog"
+      aria-labelledby="sing-result-title"
+    >
+      <div class="dialog-head">
+        <h2 id="sing-result-title" tabindex="-1">Ta chanson, mot par mot</h2>
+      </div>
+      <div id="sing-result-body"></div>
+      <div class="row">
+        <button id="sing-again" class="btn primary" type="button">Rechanter</button>
+        <button id="sing-result-other" class="btn" type="button">Autre chanson</button>
+        <button id="sing-result-close" class="btn" type="button">Fermer</button>
       </div>
     </dialog>
 

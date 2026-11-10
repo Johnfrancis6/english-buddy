@@ -1,6 +1,6 @@
 # État du projet — English Buddy
 
-Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 6, mode autopilote).
+Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 7, mode autopilote).
 
 ## Où on en est
 
@@ -26,8 +26,12 @@ Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 6, mode 
   `phase-5`), guide [docs/tests/phase-6.md](tests/phase-6.md), comparaison
   des options dans [docs/PRONUNCIATION.md](PRONUNCIATION.md). Le site de test
   montre désormais la phase 6.
-- Prochaine étape (autopilote) : phase 7 (chant), ouverte par la session
-  orchestratrice. Franco teste les guides 1 à 6 à son retour.
+- **Phase 7 construite** (chant), branche `phase-7` (partie de `phase-6`),
+  guide [docs/tests/phase-7.md](tests/phase-7.md), essai « qu'est-ce qui
+  peut chanter gratuitement ? » dans [docs/SINGING.md](SINGING.md). Le site
+  de test montre désormais la phase 7.
+- Prochaine étape (autopilote) : phase 8 (finition), ouverte par la session
+  orchestratrice. Franco teste les guides 1 à 7 à son retour.
 
 ## Mode autopilote (Franco absent)
 
@@ -73,6 +77,14 @@ amis et avant la fusion dans `main`.
       West Europe), copier « KEY 1 » et la région dans Réglages →
       « Prononciation ». Étapes détaillées dans le guide de la phase 6, partie
       4. Sans elle, Gemini note tout seul.
+- [ ] Phase 7 : **écouter** le karaoké (rien n'a pu être écouté pendant la
+      construction) : le fredonnement de Maya est-il agréable ? Les airs
+      sont-ils justes ? Les notes de rythme et de prononciation chantée
+      sont-elles crédibles avec ta voix et ton casque ? Ta chanson
+      tombe-t-elle bien sur l'air ?
+- [ ] Phase 7, **facultatif** — dire si tu veux essayer une vraie voix
+      chantée payante (Lyria 3.5 de Google, environ 0,08 $ la chanson, pas
+      de palier gratuit) : il faudrait activer la facturation sur ta clé.
 - [ ] Phase 3, **facultatif** — activer les comptes en ligne (Supabase,
       gratuit), environ 10 minutes :
   1. Va sur <https://supabase.com>, clique sur « Start your project » et
@@ -105,6 +117,69 @@ amis et avant la fusion dans `main`.
      est mis en pause (un clic pour le relancer).
 - [ ] Ouvrir la pull request finale vers `main` et la fusionner (ou la
       demander à Claude).
+
+## Auto-critique de la phase 7
+
+Ce qui marche (mesuré dans la session de construction, Google et Groq
+**simulés**, micro factice de Chromium, sans GPU, **sans haut-parleur** :
+rien n'a été écouté) :
+
+- Essai écrit (docs du jour) : Lyria 3.5 / 3 Clip / 3 Pro n'ont **pas de
+  palier gratuit** (page des prix) et composent leur propre air ; Lyria
+  RealTime est « instrumental only » ; la synthèse vocale Gemini (gratuite)
+  parle ; les synthèses chantées libres sont en GPL-3.0 (18 à 25 Mo, `npm
+  view`) ou sans version navigateur. Choix noté dans DECISIONS.md.
+- Karaoké maison (WebAudio) : 8 chansons (5 du domaine public, 3 écrites
+  pour la plateforme), chaque ligne vérifiée « une note par syllabe » (test
+  de logique) ; décompte, accompagnement harmonisé, mots allumés sur
+  l'horloge de la chanson (Playwright).
+- Maya fredonne (sa bouche bouge : mesuré par le test), garde le rythme
+  (posture visible sur les captures), applaudit ; trois façons de chanter.
+- Note par mot : prononciation par le `PronunciationScorer` de la phase 6
+  (la requête dit que c'est chanté) + rythme mesuré dans la page. Sur des
+  prises **synthétiques** (tests de logique) : en rythme ≥ 95, retard
+  constant de 220 ms trouvé et retiré, mot sauté 0, mot en retard de 450 ms
+  < 75. Avec Groq : horodatages par mot pris en compte.
+- Sans clé : rythme seul, et chanson assemblée par la page (Playwright,
+  aucune requête sortante). Service en panne : le rythme reste noté.
+- Chanson tirée des cartes de révision : la requête contient les bonnes
+  formes et les syllabes par ligne ; la réponse est vérifiée, les paroles
+  sont ajustées à l'air par le code.
+- Rien d'audio dans IndexedDB (test qui lit le stockage). Captures
+  vérifiées contre DESIGN.md à 1280 et 420 px ; lint, 193 tests de logique,
+  Playwright au vert.
+
+Ce qui est **supposé, pas mesuré** :
+
+- **Tout ce qui s'entend** : le timbre du fredonnement (un synthétiseur à
+  formants, pas une voix), l'équilibre avec l'accompagnement, la justesse des
+  airs tapés à la main, l'harmonisation automatique.
+- Que Gemini juge bien des mots **chantés** (voyelles tenues) : déjà
+  incertain pour des mots lus (phase 6), plus encore ici.
+- La mesure du rythme sur une vraie voix : un chant lié ne montre pas le
+  début de chaque mot ; le seuil de voix est réglé sur des sons de synthèse.
+  Le micro factice de Chromium (des bips) obtient 16 à 25 en rythme, ce qui
+  est normal mais ne prouve rien.
+- Le retard réel entre le son et le micro (casque sans fil, navigateur) :
+  retiré automatiquement, jamais mesuré sur une vraie machine.
+- Que Whisper horodate correctement du chant ; que les couplets de Gemini
+  riment et tombent bien sur l'air.
+
+Ce qui est faible :
+
+- **Pas de duo chanté** : Maya fredonne. C'est l'alternative, pas la
+  promesse du brief.
+- Un retard constant est pardonné : quelqu'un qui chante toujours 0,3 s
+  après la musique garde une bonne note de rythme (la page le lui dit).
+- Avec des haut-parleurs, le micro entend la musique : la note de rythme
+  serait faussée (casque conseillé, écrit à l'écran).
+- La hauteur des notes chantées n'est pas jugée (seulement les mots et le
+  rythme).
+- Trois airs originaux très simples ; l'accompagnement est minimal.
+- Les notes de chant ne créent pas de cartes de révision et n'entrent pas
+  dans la note de prononciation (choix assumé).
+- À 420 px, le panneau du karaoké prend la moitié basse de l'écran avant de
+  chanter (il se réduit pendant la chanson).
 
 ## Auto-critique de la phase 6
 
@@ -459,13 +534,12 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Autopilote : phase 7 (chant : d'abord un essai « qu'est-ce qui peut
-  chanter gratuitement ? », puis karaoké noté, duo avec Maya, chansons tirées
-  des fautes), modèle conseillé **Fable 5.2**, branche `phase-7` créée
-  depuis `phase-6`, ouverte par la session orchestratrice. Prêt pour elle :
-  `PronunciationScorer` (score par mot d'une phrase connue : réutilisable
-  pour noter les paroles chantées), l'enregistreur de prise
-  (`recordTake`), les sons difficiles (`sounds.ts`).
+- Autopilote : phase 8 (finition, harmonisation finale, guide de test
+  complet), modèle conseillé **Opus 5.5**, branche `phase-8` créée depuis
+  `phase-7`, ouverte par la session orchestratrice. Arrêt avant
+  l'invitation des amis et avant la fusion dans `main`. À reprendre en
+  phase 8 : la barre du haut passe sur trois lignes à 420 px ; « Effacer mes
+  conversations » n'efface pas encore les chansons ni les notes de chant.
 
 ## Journal
 
@@ -485,8 +559,18 @@ Ce qui est faible :
 | 2026-11-10 | Phase 2 | DESIGN.md + styles partagés ; accueil (lieu + personnage) ; 5 personnages VRoid gratuits allégés (Jake, Emma, Maya, Ollie en veste, Lily 9 ans) ; décors toon café / bureau / rue ; marche, salut, hochement, rire, réflexion, check du poing déclenchés par la conversation ; voix et prompt par personnage ; mesures repliables avec images/s. Testé avec Google simulé, sans GPU | En attente (autopilote) |
 | 2026-11-10 | Phase 5 | Accueil guidé en français en 6 étapes (confidentialité, clé Gemini gratuite vérifiée, clé Groq facultative, choix et test du micro, niveau de départ, premier personnage), revisible depuis les réglages ; documents : import PDF lu dans le navigateur (PDF.js 6.5.438), passages, mots difficiles (Gemini Flash) ajoutés aux révisions FSRS, étude d'un passage avec un personnage, lien web seulement si le site l'autorise (CORS). Testé avec Google simulé | En attente (autopilote) |
 | 2026-11-10 | Phase 6 | Comparaison écrite des options de notation (Gemini, Groq Whisper, Azure, modèles dans le navigateur) ; exercice « Prononciation » derrière `PronunciationScorer` : Gemini par défaut, contrôle Groq Whisper facultatif, Azure facultatif ; 5 phrases (révisions, tes fautes et tes mots, sons th / h / r / voyelles / -ed / accent) ; note par mot et sons à travailler ; cartes FSRS « Prononciation » notées par le score ; « Mes progrès » : barre prononciation (estimation, hors niveau) et sons à travailler ; aucune voix gardée. Testé avec Google et Groq simulés | En attente (autopilote) |
+| 2026-11-10 | Phase 7 | Essai écrit « qu'est-ce qui peut chanter gratuitement ? » (aucune voix chantée gratuite ne suit nos notes : Lyria payant, voix Gemini parlées, synthèses libres en GPL ou trop lourdes) ; karaoké maison en WebAudio : 8 chansons (5 du domaine public, 3 écrites pour la plateforme), paroles allumées en rythme, Maya qui fredonne, garde le rythme et applaudit, trois façons de chanter ; note par mot : prononciation (`PronunciationScorer`, prévenu que c'est chanté) et rythme mesuré dans le navigateur (affiné par Groq Whisper) ; chanson écrite à partir des fautes et des mots du jour (Gemini, ou assemblée sans clé) ; aucune voix gardée. Testé avec Google et Groq simulés, rien n'a été écouté | En attente (autopilote) |
 
 ## Points ouverts
+
+- Vraie voix chantée : bouton facultatif « chanson complète » avec Lyria 3.5
+  (payant, environ 0,08 $ la chanson, à écouter, pas à noter) si Franco le
+  veut ; essayer `gemini-3.8-flash-tts` avec une vraie clé pour entendre ce
+  que donne un style « chanté ».
+- Karaoké : juger la hauteur des notes chantées (détection de hauteur dans
+  le navigateur) ; plus de chansons ; choisir le personnage qui accompagne.
+- Chant : effacer les chansons et les notes de chant depuis les réglages ;
+  les mettre dans le compte Supabase quand les comptes seront activés.
 
 - Prononciation dans le niveau estimé : laissée à part (phrases lues) ; à
   décider avec Franco après son test.
@@ -513,7 +597,8 @@ Ce qui est faible :
   plus les personnages) ; les personas sont dans `src/teaching/persona.ts`.
 - Gestes plus naturels : clips d'animation CC0 (par exemple Quaternius)
   adaptés au squelette VRM, si Franco trouve les gestes faits main trop
-  raides. Chanter et danser (Maya) : phase 6.
+  raides. Chanter et danser (Maya) : fait en phase 7 (elle fredonne et garde
+  le rythme).
 - Voix britanniques de la « Extended Voice Library » de Google
   (`GET /v1beta/voices`) : à essayer avec une clé, si l'accent demandé dans
   le prompt ne suffit pas.

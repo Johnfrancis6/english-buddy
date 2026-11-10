@@ -46,6 +46,41 @@ simple shapes (`src/scene/sets.ts`); all gestures and the walk are written
 by hand as bone rotations (`src/scene/gestures.ts`). No Mixamo or other
 animation file is used.
 
+## Songs (`src/singing/songs.ts`, phase 7)
+
+No audio file, no MIDI file, no score image: each song is a few lines of
+text (the words, and the tune typed by hand as note names and lengths),
+played in the browser by WebAudio. Only songs whose **words and tune** are
+in the public domain everywhere (authors dead for more than 70 years, first
+published before 1900), or songs written for this project. Checked on
+2026-11-10.
+
+| Song | Words | Tune | Status |
+|---|---|---|---|
+| Twinkle, Twinkle, Little Star (first verse) | Jane Taylor, "The Star", in *Rhymes for the Nursery*, 1806 (died 1824) | French air "Ah ! vous dirai-je, maman", first printed 1761, anonymous | Public domain. <https://en.wikipedia.org/wiki/Twinkle,_Twinkle,_Little_Star> |
+| Are You Sleeping? (Brother John) | Traditional English version of "Frère Jacques" (French words printed 1811; English text in 19th-century song books), anonymous | "Frère Jacques", traditional, tune printed about 1780 | Public domain. <https://en.wikipedia.org/wiki/Fr%C3%A8re_Jacques> |
+| Mary Had a Little Lamb (first verse) | Sarah Josepha Hale, 1830 (died 1879) | Traditional tune set by Lowell Mason, 1831 (died 1872) | Public domain. <https://en.wikipedia.org/wiki/Mary_Had_a_Little_Lamb> |
+| Row, Row, Row Your Boat | Traditional American, printed 1852 | Tune credited to Eliphalet Oriel Lyte, *The Franklin Square Song Collection*, 1881 (died 1913) | Public domain. <https://en.wikipedia.org/wiki/Row,_Row,_Row_Your_Boat> |
+| Amazing Grace (first verse) | John Newton, *Olney Hymns*, 1779 (died 1807) | "New Britain", anonymous, printed 1829, joined to the words by William Walker in 1835 (died 1875) | Public domain. <https://en.wikipedia.org/wiki/Amazing_Grace> |
+| Three Thin Things | Written for English Buddy (phase 7) | Written for English Buddy | Ours (same terms as the repository) |
+| Happy Harry | Written for English Buddy | Written for English Buddy | Ours |
+| I Worked All Day | Written for English Buddy | Written for English Buddy | Ours |
+
+The tunes were typed from memory of these very well-known melodies, not
+copied from a modern arrangement or edition (an arrangement can carry its own
+rights; the bare melody does not). The accompaniment is computed by the app
+(a bass note and two chord notes per beat, chosen among the three main
+chords of the key). The three original tunes are simple scale patterns
+written for these words; any likeness to an existing tune is unintended.
+
+Songs written for a learner ("Ta chanson") are produced in their browser —
+by Gemini with their key, or assembled by the page — from their own review
+cards, on one of the tunes above. They stay in their browser and are never
+committed. The model is told never to quote or imitate existing lyrics.
+
+Maya's hum, the count-in and the accompaniment are synthesised by the
+page's own code (`src/singing/synth.ts`): no sample, no sound font.
+
 ## Software libraries (npm, not redistributed as files in this repo)
 
 | Package | Licence |
@@ -72,3 +107,4 @@ Phase 6 (pronunciation) adds no third-party asset and no library: the 24
 practice sentences, the sound tips and the spelling rules are written for this
 project; "Écouter le modèle" uses the voices already installed in the
 learner's browser (`speechSynthesis`), nothing is downloaded or shipped.
+Phase 7 (singing) adds no library and no third-party file: see "Songs" above.

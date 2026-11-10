@@ -55,11 +55,19 @@ export function applyRecognition(r: PronunciationResult, heard: string): Pronunc
   return { ...r, words, overall: overallOf(words) };
 }
 
-export async function whisperHeard(
+/** One word as Whisper wrote it, with its times in the recording (seconds). */
+export interface HeardWord {
+  word: string;
+  start: number;
+  end: number;
+}
+
+/** Whisper's words with their timestamps (empty when it returns text only). */
+export async function whisperWords(
   wav: Uint8Array,
   groqKey: string,
   signal?: AbortSignal,
-): Promise<string> {
+): Promise<{ text: string; words: HeardWord[] }> {
   const form = new FormData();
   form.append('file', new Blob([wav as BlobPart], { type: 'audio/wav' }), 'sentence.wav');
   form.append('model', 'whisper-large-v3');
@@ -73,11 +81,27 @@ export async function whisperHeard(
     body: form,
     signal,
   });
-  const json = (await res.json()) as { text?: string; words?: { word?: string }[] };
-  if (Array.isArray(json.words) && json.words.length) {
-    return json.words.map((w) => String(w.word ?? '').trim()).join(' ');
-  }
-  return (json.text ?? '').trim();
+  const json = (await res.json()) as {
+    text?: string;
+    words?: { word?: string; start?: number; end?: number }[];
+  };
+  const words = (Array.isArray(json.words) ? json.words : [])
+    .map((w) => ({
+      word: String(w.word ?? '').trim(),
+      start: Number(w.start ?? NaN),
+      end: Number(w.end ?? NaN),
+    }))
+    .filter((w) => w.word);
+  return { text: (json.text ?? '').trim(), words };
+}
+
+export async function whisperHeard(
+  wav: Uint8Array,
+  groqKey: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const { text, words } = await whisperWords(wav, groqKey, signal);
+  return words.length ? words.map((w) => w.word).join(' ') : text;
 }
 
 /** The main scorer, cross-checked by Whisper when a Groq key is present. */

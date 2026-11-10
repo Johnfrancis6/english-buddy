@@ -58,16 +58,19 @@ export const PRON_SCHEMA = {
   required: ['audio_ok', 'heard', 'words', 'feedback_fr'],
 } as const;
 
-export function pronPrompt(reference: string): string {
+/** Added to the prompt when the take is a song (phase 7). */
+export const SUNG_NOTE = `The speaker is SINGING these words over a simple tune (karaoke), not reading them. Judge only the sounds of the words (consonants, vowel quality, endings). Held or lengthened vowels, pitch, vibrato and voice quality are normal in a song and are never a problem; do not report "stress" for a sung word. A faint hummed melody or a click in the background is the backing track: ignore it.`;
+
+export function pronPrompt(reference: string, sung = false): string {
   const words = tokenize(reference);
   const hints = words
     .map((w) => [w, soundsOf(w)] as const)
     .filter(([, s]) => s.length)
     .map(([w, s]) => `${w} (${s.join(', ')})`)
     .join('; ');
-  return `Target sentence (read aloud by the speaker): "${reference}"
+  return `Target ${sung ? 'lyrics (sung by the speaker)' : 'sentence (read aloud by the speaker)'}: "${reference}"
 Target words, in order (${words.length}): ${words.join(' | ')}
-Words with sounds that are often hard for French speakers: ${hints || 'none'}`;
+Words with sounds that are often hard for French speakers: ${hints || 'none'}${sung ? `\n${SUNG_NOTE}` : ''}`;
 }
 
 export const PRON_SYSTEM = `You are a careful English pronunciation assessor. The speaker is a French-speaking adult learning English. You receive a short recording and the sentence they were asked to read.
@@ -168,7 +171,7 @@ export class GeminiScorer implements PronunciationScorer {
         model,
         system: PRON_SYSTEM,
         parts: [
-          { text: pronPrompt(input.reference) },
+          { text: pronPrompt(input.reference, input.sung) },
           { inlineData: { mimeType: 'audio/wav', data: toBase64(input.wav) } },
         ],
         jsonSchema: PRON_SCHEMA,

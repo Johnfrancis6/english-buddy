@@ -51,6 +51,8 @@ export interface ScoreInput {
   wav: Uint8Array;
   /** The sentence the learner was asked to read. */
   reference: string;
+  /** The words are sung (karaoke), not read: long vowels and pitch are normal. */
+  sung?: boolean;
   signal?: AbortSignal;
 }
 

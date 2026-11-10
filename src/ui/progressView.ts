@@ -54,7 +54,7 @@ export function renderProgress(
   );
 }
 
-function skillRow(name: string, v: number, title: string, extra?: string): HTMLElement {
+export function skillRow(name: string, v: number, title: string, extra?: string): HTMLElement {
   const bar = el('span', { class: 'skill-bar' }, el('span', { class: 'skill-fill' }));
   (bar.firstChild as HTMLElement).style.width = `${v}%`;
   for (const b of BANDS.slice(1)) {

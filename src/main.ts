@@ -95,6 +95,35 @@ import { SOUNDS } from './pronunciation/sounds';
 import { AZURE_REGIONS } from './pronunciation/azure';
 import { WhisperCheckedScorer } from './pronunciation/whisperCheck';
 import { listAttempts, saveAttempt } from './storage/pron';
+import { makeMainScorer } from './pronunciation/factory';
+import { whisperWords } from './pronunciation/whisperCheck';
+import {
+  renderPicker,
+  singProgressSection,
+  SingView,
+  MODES as SING_MODES,
+  type SongRow,
+} from './ui/singView';
+import type { Song } from './singing/melody';
+import { SONGS } from './singing/songs';
+import { playSong, learnerLine } from './singing/synth';
+import { scoreSinging } from './singing/score';
+import {
+  lessonsIn,
+  localSong,
+  pickLessons,
+  STARTER_LESSONS,
+  tuneFor,
+  writeSong,
+} from './singing/compose';
+import {
+  deleteOwnSong,
+  listOwnSongs,
+  listSingAttempts,
+  saveOwnSong,
+  saveSingAttempt,
+  type SingAttempt,
+} from './storage/sing';
 
 const modelUrl = (c: CastMember) => `${import.meta.env.BASE_URL}models/${c.model}`;
 const picture = (kind: 'scenes' | 'people', id: string) =>
@@ -383,6 +412,11 @@ async function renderToday(): Promise<void> {
     pron.score === null
       ? '5 phrases à lire : th, h, r, voyelles, -ed, accent du mot. Chaque mot est noté.'
       : `Note estimée : ${pron.score}/100${weakest ? ` · à travailler : ${SOUNDS[weakest.sound].labelFr.toLowerCase()}` : ''}`;
+  const sung = await listSingAttempts().catch(() => [] as SingAttempt[]);
+  const bestSung = sung.reduce((n, a) => Math.max(n, a.result.overall), 0);
+  $('sing-line').textContent = sung.length
+    ? `${sung.length} prise${sung.length > 1 ? 's' : ''} chantée${sung.length > 1 ? 's' : ''} · meilleure note : ${bestSung}/100 · ${SONGS.length} chansons et la tienne`
+    : `${SONGS.length} chansons courtes, et une chanson écrite avec tes fautes. Chaque mot est noté : prononciation et rythme.`;
   $('today').dataset.streak = String(streak.days);
 }
 
@@ -398,6 +432,7 @@ function choose(): void {
 
 function openHome(): void {
   if (voice.state !== 'idle' && voice.state !== 'error') return;
+  leaveSing();
   inScene = false;
   homePanel.hidden = false;
   measures.hidden = true;
@@ -643,7 +678,7 @@ function renderState(state: VoiceState): void {
   startBtn.textContent = live ? 'Arrêter' : 'Démarrer';
   startBtn.classList.toggle('live', live);
   lipBtn.disabled = live;
-  $('open-home').hidden = live || !inScene;
+  $('open-home').hidden = live || !(inScene || document.body.classList.contains('singing'));
   if (live && sessionStartedAt === null) {
     sessionStartedAt = performance.now();
     log('Conversation démarrée');
@@ -977,6 +1012,13 @@ async function openProgress(): Promise<void> {
       if (!t.debrief) void runDebrief(t);
     },
   );
+  const sungBox = singProgressSection(await listSingAttempts().catch(() => [] as SingAttempt[]));
+  if (sungBox) {
+    const body = $('progress-body');
+    const after = body.querySelector('.pron-progress');
+    if (after) after.after(sungBox);
+    else body.append(sungBox);
+  }
   if (!progressDialog.open) {
     progressDialog.showModal();
     // Start at the top: native dialogs focus their first button otherwise.
@@ -1175,6 +1217,198 @@ pronDialog.addEventListener('close', () => {
   void renderToday();
 });
 
+// ------------------------------------------------------------------ singing
+const songsDialog = $<HTMLDialogElement>('songs');
+const singResultDialog = $<HTMLDialogElement>('sing-result');
+/** What was on stage before the karaoke (Maya and her street take over meanwhile). */
+let beforeSing: { member: CastMember; sceneId: SceneId } | null = null;
+
+const singErrorText = (err: unknown): string => {
+  log(`Chant, erreur : ${String((err as Error)?.message ?? err).slice(0, 200)}`);
+  console.warn('singing', err);
+  if (err instanceof DOMException && err.name === 'NotAllowedError')
+    return 'Le micro est refusé. Autorise-le dans la barre d’adresse du navigateur, puis réessaie.';
+  if (err instanceof DOMException) return 'Le micro ne s’ouvre pas. Vérifie qu’il est branché.';
+  return asProviderError(err, 'gemini').french;
+};
+
+const singView = new SingView(
+  $('sing'),
+  singResultDialog,
+  $('sing-result-body'),
+  {
+    play: (song, t, mode) => {
+      void player.resume();
+      return playSong(player.ctx, player.analyser, song, t, { mode, lead: 0.25 });
+    },
+    clock: () => player.ctx.currentTime,
+    record: (onLevel, maxMs) => {
+      // Called from the click: the audio clock must run before the microphone answers.
+      void player.resume();
+      return recordTake(loadSettings().micDeviceId, onLevel, {
+        // A song has rests: only the end of the song (or its length) ends the take.
+        endSilenceMs: maxMs,
+        noSpeechMs: maxMs,
+        maxMs,
+      });
+    },
+    score: async (song, mode, t, wav, takeStartSec) => {
+      const s = loadSettings();
+      const lines = t.lines.filter((_, i) => learnerLine(mode, i));
+      // The take lives only in this call: cut in memory, sent once, never saved.
+      const result = await scoreSinging({
+        pcm: wav.subarray(44),
+        rate: MIC_RATE,
+        lines,
+        takeStartSec,
+        scorer: makeMainScorer(s),
+        ...(s.groqKey.trim()
+          ? { whisper: (part: Uint8Array) => whisperWords(part, s.groqKey) }
+          : {}),
+      });
+      const now = Date.now();
+      await saveSingAttempt({
+        id: `sing-${now}-${Math.random().toString(36).slice(2, 7)}`,
+        at: now,
+        songId: song.id,
+        title: song.title,
+        mode,
+        result,
+      });
+      log(
+        `Chant « ${song.title} » (${SING_MODES.find((m) => m.id === mode)?.label ?? mode}) : ${result.overall}/100 — prononciation ${result.pron ?? 'non notée'}${result.scorer ? ` (${scorerNameFr(result.scorer)}, ${result.model})` : ''}, rythme ${result.rhythm} (${result.timing === 'voice+whisper' ? 'voix + horodatages Whisper' : 'voix seule'}), décalage constant retiré ${result.lagMs} ms${result.pronError ? ` · prononciation en erreur : ${result.pronError}` : ''}`,
+      );
+      return result;
+    },
+    errorText: singErrorText,
+    beat: (beat) => stage.setDance(beat),
+    cheer: (overall) => stage.play(overall >= 60 ? 'clap' : 'nod'),
+    hasScorer: () => makeMainScorer(loadSettings()) !== null,
+    chunkSec: MIC_CHUNK_MS / 1000,
+  },
+  { other: () => void openSongs(), quit: () => openHome() },
+);
+
+/** Maya takes the stage in her street; the choice of the home screen is kept for later. */
+async function enterSing(song: Song): Promise<void> {
+  if (voice.state !== 'idle' && voice.state !== 'error') return;
+  if (songsDialog.open) songsDialog.close();
+  const maya = castMember('maya');
+  if (!beforeSing) beforeSing = { member, sceneId };
+  inScene = false;
+  homePanel.hidden = true;
+  measures.hidden = false;
+  controls.hidden = true;
+  transcriptPanel.hidden = true;
+  goals.hide();
+  $('open-home').hidden = false;
+  $('open-home').textContent = 'Retour à l’accueil';
+  stage.setViewShift(0);
+  document.body.classList.add('singing');
+  singView.open(song);
+  log(`Karaoké : « ${song.title} » avec Maya`);
+  if (member !== maya || sceneId !== maya.homeScene || !characterReady) {
+    member = maya;
+    sceneId = maya.homeScene;
+    stage.setScene(sceneId);
+    applyCharacterLook();
+    await showCharacter();
+  }
+}
+
+function leaveSing(): void {
+  if (!singView.active) return;
+  singView.close();
+  document.body.classList.remove('singing');
+  $('open-home').textContent = 'Changer de scène';
+  const back = beforeSing;
+  beforeSing = null;
+  if (back && (back.member !== member || back.sceneId !== sceneId)) {
+    member = back.member;
+    sceneId = back.sceneId;
+    stage.setScene(sceneId);
+    applyCharacterLook();
+    void showCharacter();
+  }
+}
+
+async function openSongs(notice = ''): Promise<void> {
+  const now = Date.now();
+  const [cards, own, attempts] = await Promise.all([
+    listCards().catch(() => [] as ReviewCard[]),
+    listOwnSongs().catch(() => [] as Song[]),
+    listSingAttempts().catch(() => [] as SingAttempt[]),
+  ]);
+  const best = (id: string): number | null => {
+    const mine = attempts.filter((a) => a.songId === id);
+    return mine.length ? Math.max(...mine.map((a) => a.result.overall)) : null;
+  };
+  const rows = (songs: readonly Song[]): SongRow[] =>
+    songs.map((song) => ({ song, best: best(song.id) }));
+  const picked = pickLessons(cards, now);
+  const lessons = picked.length ? picked : [...STARTER_LESSONS];
+  $('songs-meta').textContent =
+    `${SONGS.length} chansons · domaine public ou écrites pour la plateforme`;
+  renderPicker(
+    $('songs-body'),
+    rows(own),
+    rows(SONGS),
+    lessons,
+    picked.length === 0,
+    {
+      pick: (song) => void enterSing(song),
+      compose: async () => {
+        const s = loadSettings();
+        const at = Date.now();
+        const tune = tuneFor(at);
+        let song: Song | null = null;
+        let by: 'gemini' | 'local' = 'local';
+        if (s.apiKey.trim()) {
+          const models = [s.analysisModel, ...ANALYSIS_MODELS.map((m) => m.id)].filter(
+            (m, i, all) => all.indexOf(m) === i,
+          );
+          try {
+            song = await writeSong(s.apiKey, models, lessons, tune, s.startLevel, at);
+            if (song) by = 'gemini';
+            else log('Chanson : réponse de Gemini inutilisable, paroles assemblées ici');
+          } catch (err) {
+            log(
+              `Chanson : Gemini indisponible (${String((err as Error)?.message ?? err).slice(0, 120)}), paroles assemblées ici`,
+            );
+          }
+        }
+        song ??= localSong(lessons, tune, at);
+        const used = lessonsIn(song, lessons);
+        // Only the lessons really present in the words are announced.
+        song.uses = (used.length ? used : lessons.slice(0, 2)).map((l) => l.text);
+        if (!used.length && by === 'gemini') song.uses = [];
+        await saveOwnSong(song);
+        log(
+          `Chanson écrite (${by === 'gemini' ? 'Gemini' : 'sans IA'}) : « ${song.title} », ${used.length} point(s) repris sur ${lessons.length}`,
+        );
+        return { song, by, used };
+      },
+      remove: (song) => deleteOwnSong(song.id),
+      errorText: singErrorText,
+    },
+    (text) => void openSongs(text),
+    notice,
+  );
+  if (!songsDialog.open) {
+    songsDialog.showModal();
+    $('songs-title').focus();
+    songsDialog.scrollTop = 0;
+  }
+}
+$('open-songs').addEventListener('click', () => void openSongs());
+$('songs-close').addEventListener('click', () => songsDialog.close());
+$('sing-again').addEventListener('click', () => singView.again());
+$('sing-result-other').addEventListener('click', () => {
+  singResultDialog.close();
+  void openSongs();
+});
+$('sing-result-close').addEventListener('click', () => singResultDialog.close());
+
 /**
  * Talks debriefed before phase 4 have no cards yet: create them once, due
  * from the day after each talk (most are due at once).
@@ -1313,6 +1547,7 @@ function lipSyncFrame(now: number): void {
   canvas.dataset.frames = String(stage.frames);
   canvas.dataset.gestures = stage.activeGestures.join(' ');
   canvas.dataset.walking = String(stage.walking);
+  canvas.dataset.dancing = String(stage.dancing);
   requestAnimationFrame(lipSyncFrame);
 }
 requestAnimationFrame(lipSyncFrame);

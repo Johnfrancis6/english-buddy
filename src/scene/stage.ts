@@ -5,6 +5,7 @@ import { Blinker } from './blink';
 import { buildSet, type BuiltSet } from './sets';
 import {
   composePose,
+  dancePose,
   GesturePlayer,
   idlePose,
   smoothstep,
@@ -50,6 +51,10 @@ export class Stage {
   /** Walk-in: start time on the stage clock, or null when standing. */
   private walkStart: number | null = null;
   private readonly gestures = new GesturePlayer();
+  /** Beat of the song being played (phase 7), or null: the character keeps the beat. */
+  private danceBeat: number | null = null;
+  private lastDanceBeat = 0;
+  private danceWeight = 0;
   private reducedMotion = false;
   private viewShift = 0;
   private viewShiftTarget = 0;
@@ -244,6 +249,16 @@ export class Stage {
     return this.gestures.active;
   }
 
+  /** Keeps the beat of a song: pass the current beat each frame, null to stop. */
+  setDance(beat: number | null): void {
+    this.danceBeat = beat;
+  }
+
+  /** Is the character keeping the beat? (for tests and the report) */
+  get dancing(): boolean {
+    return this.danceWeight > 0.5;
+  }
+
   /** Mouth shapes for this frame (already smoothed by the caller). */
   setVisemes(v: VisemeWeights): void {
     this.visemes = v;
@@ -298,6 +313,16 @@ export class Stage {
         this.onArrived?.();
       }
     }
+    // Keeping the beat of a song: fades in and out over about half a second.
+    const target = this.danceBeat !== null && this.walkStart === null ? 1 : 0;
+    this.danceWeight += (target - this.danceWeight) * Math.min(1, dt * 4);
+    if (this.danceBeat !== null) this.lastDanceBeat = this.danceBeat;
+    if (this.danceWeight > 0.01) {
+      const amp = this.danceWeight * (this.reducedMotion ? 0.5 : 1);
+      const d = dancePose(this.lastDanceBeat, amp);
+      extra.push(d.pose);
+      bob += d.bob;
+    } else if (target === 0) this.danceWeight = 0;
     this.root.position.y = bob;
 
     const layers = this.gestures.frames(t);

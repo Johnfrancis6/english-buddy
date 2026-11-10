@@ -14,13 +14,21 @@ import { WhisperCheckedScorer } from './whisperCheck';
 export function makeScorer(
   s: Pick<Settings, 'apiKey' | 'groqKey' | 'azureKey' | 'azureRegion' | 'analysisModel'>,
 ): PronunciationScorer | null {
+  const main = makeMainScorer(s);
+  if (!main || main instanceof AzureScorer) return main;
+  return s.groqKey.trim() ? new WhisperCheckedScorer(main, s.groqKey) : main;
+}
+
+/** The scorer without the Whisper cross-check (the karaoke calls Whisper itself, for the timing). */
+export function makeMainScorer(
+  s: Pick<Settings, 'apiKey' | 'azureKey' | 'azureRegion' | 'analysisModel'>,
+): PronunciationScorer | null {
   if (s.azureKey.trim()) return new AzureScorer(s.azureKey, s.azureRegion);
   if (!s.apiKey.trim()) return null;
   const models = [s.analysisModel, ...ANALYSIS_MODELS.map((m) => m.id)].filter(
     (m, i, all) => all.indexOf(m) === i,
   );
-  const gemini = new GeminiScorer(s.apiKey, models);
-  return s.groqKey.trim() ? new WhisperCheckedScorer(gemini, s.groqKey) : gemini;
+  return new GeminiScorer(s.apiKey, models);
 }
 
 /** French name of a scorer id, for the screen and the progress page. */

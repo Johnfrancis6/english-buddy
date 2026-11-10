@@ -1169,3 +1169,210 @@ body.page {
     grid-template-columns: 120px 1fr 36px;
   }
 }
+
+/* ======================================================== singing (phase 7) */
+/* Karaoke panel: bottom centre, under the character, never over the face. */
+.sing {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-4);
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px));
+  max-height: 46vh;
+  overflow: auto;
+  padding: var(--space-4);
+  z-index: 1;
+  font-size: var(--text-sm);
+}
+.sing[hidden] {
+  display: none;
+}
+.sing-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.sing-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 1.2;
+}
+.sing-status {
+  margin: var(--space-1) 0 0;
+  min-height: 1.45em;
+  color: var(--ink-soft);
+}
+.sing-status.busy::before {
+  content: '⏳ ';
+}
+.sing-count {
+  margin: 0;
+  min-height: 0;
+  text-align: center;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+.sing-count:empty {
+  display: none;
+}
+.sing-lines {
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  text-align: center;
+}
+.sing-line {
+  margin: 0;
+}
+.sing-line.current {
+  font-size: var(--text-lg);
+  line-height: 1.45;
+}
+.sing-line.next {
+  margin-top: var(--space-1);
+  color: var(--ink-soft);
+}
+.sing-who {
+  vertical-align: middle;
+}
+/* The word to sing now: accent colour, bold and underlined (never colour alone). */
+.sing-word.now {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 4px;
+}
+.sing-word.sung {
+  color: var(--ink-soft);
+}
+.sing-uses {
+  margin: 0 0 var(--space-2);
+}
+.sing-use {
+  font-weight: 600;
+}
+.sing-actions {
+  align-items: center;
+}
+.sing-pick {
+  margin: 0;
+}
+.sing-pick select {
+  width: auto;
+  max-width: 100%;
+}
+.sing-note {
+  margin: var(--space-2) 0 0;
+}
+.sing-foot {
+  align-items: baseline;
+  margin-top: var(--space-2);
+}
+.sing-credit {
+  margin: 0;
+  flex: 1 1 220px;
+}
+/* Songbook dialog. */
+.songs {
+  width: min(680px, calc(100vw - 32px));
+}
+.songs h3 {
+  margin: var(--space-4) 0 var(--space-1);
+  font-size: var(--text-md);
+}
+.songs-own {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+.songs-own h3 {
+  margin-top: 0;
+}
+.songs-own p {
+  margin: 0 0 var(--space-2);
+}
+.song-lessons {
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-1);
+}
+.song-list {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+.song-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+.song-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.song-side {
+  flex: none;
+  align-items: center;
+}
+/* Result: two marks under each word (pronunciation, then rhythm). */
+.sing-result-dialog {
+  width: min(660px, calc(100vw - 32px));
+}
+.sing-result {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+.sing-parts {
+  margin: 0 0 var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+.sing-tile .pron-s[data-level='good'] {
+  color: var(--success);
+}
+.sing-tile .pron-s[data-level='ok'] {
+  color: var(--ink-soft);
+}
+.sing-tile .pron-s[data-level='weak'] {
+  color: var(--danger);
+}
+.sing-progress p {
+  margin: 0 0 var(--space-2);
+}
+@media (max-width: 560px) {
+  .sing {
+    padding: var(--space-3);
+    max-height: 52vh;
+  }
+  .song-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sing-pick,
+  .sing-pick select {
+    width: 100%;
+  }
+}
+/* While a song plays, only the words and "Arrêter" stay: Maya is the star. */
+.sing[data-state='listening'] :is(.sing-pick, .sing-note, .sing-foot, .sing-uses, #sing-listen),
+.sing[data-state='singing'] :is(.sing-pick, .sing-note, .sing-foot, .sing-uses, #sing-listen),
+.sing[data-state='scoring'] :is(.sing-pick, .sing-note, .sing-foot, .sing-uses, #sing-listen) {
+  display: none;
+}

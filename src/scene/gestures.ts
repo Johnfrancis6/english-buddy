@@ -45,8 +45,15 @@ export type Bone =
 export type Pose = Partial<Record<Bone, Euler3>>;
 export type ExpressionWeights = Partial<Record<'happy' | 'relaxed' | 'surprised' | 'aa', number>>;
 
-export type GestureName = 'wave' | 'nod' | 'laugh' | 'think' | 'fistBump';
-export const GESTURES: readonly GestureName[] = ['wave', 'nod', 'laugh', 'think', 'fistBump'];
+export type GestureName = 'wave' | 'nod' | 'laugh' | 'think' | 'fistBump' | 'clap';
+export const GESTURES: readonly GestureName[] = [
+  'wave',
+  'nod',
+  'laugh',
+  'think',
+  'fistBump',
+  'clap',
+];
 
 /** One frame of a gesture. */
 export interface GestureFrame {
@@ -197,6 +204,30 @@ export const SPECS: Record<GestureName, GestureSpec> = {
       };
     },
   },
+  // Both hands in front of the chest, four small claps, a smile (end of a song).
+  clap: {
+    duration: 2.2,
+    fadeIn: 0.35,
+    fadeOut: 0.45,
+    additive: false,
+    frame: (t, amp) => {
+      const beat = Math.max(0, Math.sin(t * 2 * Math.PI * 2.2)) * smoothstep(0.3, 0.5, t);
+      const open = 0.22 * (1 - beat) * amp;
+      return {
+        ...NONE,
+        abs: {
+          rightUpperArm: [0, 0.55, -1.05],
+          rightLowerArm: [0, 1.75 - open, 0],
+          rightHand: [0, 0.2, 0],
+          leftUpperArm: [0, -0.55, 1.05],
+          leftLowerArm: [0, -1.75 + open, 0],
+          leftHand: [0, -0.2, 0],
+        },
+        add: { head: [0.03 * beat * amp, 0, 0], chest: [0.01 * beat * amp, 0, 0] },
+        expressions: { happy: 0.7 * amp },
+      };
+    },
+  },
 };
 
 /** Gesture frame at time t (seconds since it started); weight 0 when over. */
@@ -269,6 +300,33 @@ export function walkPose(phase: number, w: number): { pose: Pose; bob: number } 
       hips: [0, -0.05 * s * w, 0],
     },
     bob: Math.abs(Math.cos(phase)) * 0.025 * w,
+  };
+}
+
+/**
+ * Keeping the beat while a song plays (phase 7): a sober sway, forearms up
+ * and bouncing lightly, the head marking each beat. `beat` counts the beats
+ * of the song; `w` fades it in and out. Offsets to add over the idle pose,
+ * and a small vertical bounce in metres.
+ */
+export function dancePose(beat: number, w: number): { pose: Pose; bob: number } {
+  const side = Math.sin(beat * Math.PI); // one sway per two beats
+  const pulse = Math.cos(beat * 2 * Math.PI) * 0.5 + 0.5; // 1 on the beat
+  return {
+    pose: {
+      hips: [0, 0.06 * side * w, 0.035 * side * w],
+      spine: [0, -0.03 * side * w, -0.03 * side * w],
+      chest: [0.01 * pulse * w, 0, -0.02 * side * w],
+      neck: [0, 0, 0.02 * side * w],
+      head: [0.05 * pulse * w, 0, 0.03 * side * w],
+      leftUpperArm: [0, 0, (-0.22 - 0.04 * side) * w],
+      rightUpperArm: [0, 0, (0.22 - 0.04 * side) * w],
+      leftLowerArm: [0, (-0.75 - 0.18 * pulse) * w, 0],
+      rightLowerArm: [0, (0.75 + 0.18 * pulse) * w, 0],
+      leftUpperLeg: [0, 0, 0.02 * side * w],
+      rightUpperLeg: [0, 0, 0.02 * side * w],
+    },
+    bob: -0.012 * pulse * w,
   };
 }
 
