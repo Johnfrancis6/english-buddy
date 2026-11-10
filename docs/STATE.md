@@ -6,16 +6,18 @@ Dernière mise à jour : 2026-11-09 (fin de la construction de la phase 0).
 
 - **Phase 0 validée par Franco le 2026-11-10** (feu vert pour la phase 1).
 - Résultats mesurés avec sa clé gratuite (`gemini-3.8-live`) : 11 min 43
-  sans coupure ni refus ; délai médian 1,0 à 1,4 s ; en rythme « Posé »
-  (désormais par défaut) Jake le laisse finir ses phrases.
+  sans coupure ni refus ; délai médian 1,0 à 1,4 s. Les deux rythmes
+  restent au choix : « Rapide » (0,5 s, par défaut) pour une discussion
+  réactive, « Posé » (0,9 s) quand Franco veut finir ses phrases
+  tranquillement.
 - Lien de test : <https://johnfrancis6.github.io/english-buddy/>.
 - **Prochaine étape : phase 1** (conversation pédagogique), dans une
   nouvelle session.
 
 ## Ce que Franco doit faire maintenant
 
-- [ ] Fusionner la pull request `phase-0` → `main` (bouton vert **Merge
-      pull request**, puis **Confirm merge**).
+- [ ] Dire s'il veut la pull request `phase-0` → `main` maintenant (elle
+      sera à fusionner par lui).
 - [ ] Ouvrir une nouvelle session pour la phase 1 (voir « Prochaine
       session »).
 
@@ -79,7 +81,7 @@ Ce qui est faible :
 | 2026-11-10 | Phase 0 (mesure) | 2ᵉ rapport de Franco : **11 min 43 sans coupure ni refus** ; délai médian réel ≈ 1,3–1,4 s (37 tours, une fois retirés 17 faux délais < 0,2 s) ; aucune reconnexion observée. Ajout d'un indice de langue anglais pour la transcription | Transcription : mots mal écrits alors que Jake comprend |
 | 2026-11-10 | Phase 0 (mesure) | 3ᵉ rapport : indice de langue accepté par Google ; médiane 1,05 s sur 3 min 29. Réglage de pause changé en cours de conversation, donc pause réellement utilisée incertaine. Le rapport indique désormais les réglages de la conversation et compte les prises de parole de Jake par-dessus l'apprenant | En attente d'un essai « Posé » propre |
 | 2026-11-10 | Phase 0 (mesure) | 4ᵉ rapport, réglage « Posé » (900 ms) actif dès le départ : médiane **1,42 s** sur 7 tours (1 min 14), soit environ +0,4 s par rapport à « Rapide », comme prévu | Ressenti (coupures, transcription) à confirmer |
-| 2026-11-10 | Phase 0 (validation) | Rythme « Posé » par défaut ; pull request vers `main` | « Oui il me laisse finir, feu vert pour la phase 1 » |
+| 2026-11-10 | Phase 0 (validation) | Les deux rythmes gardés, « Rapide » par défaut | « Oui il me laisse finir, feu vert pour la phase 1 » ; « je veux les deux délais, je passerai sur 500 pour une meilleure fluidité » |
 
 ## Points ouverts
 
