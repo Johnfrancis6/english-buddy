@@ -29,3 +29,8 @@ in [docs/DECISIONS.md](docs/DECISIONS.md).
   what was measured vs assumed), one line in the log of `docs/STATE.md`.
 - Say what is measured and what is assumed. Recommend; one question at a
   time.
+- When Franco validates a phase (explicit go), open the next build session
+  yourself, without asking again: recommended model from the phase table in
+  `docs/BRIEF.md`, branch `phase-N`, and a precise starting prompt (what was
+  measured, what is still unverified, what to do first, where to stop). Then
+  tell Franco the session is open. Never start the next phase before his go.
