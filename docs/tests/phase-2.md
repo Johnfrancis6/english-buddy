@@ -98,7 +98,7 @@ Ollie et Lily :
    - les personnages : lesquels garder, lesquels changer (les modèles sont
      des exemples gratuits de VRoid, style manga) ;
    - l'accueil et le style : clair, agréable, quelque chose à changer ?
-3. Go / no-go pour la phase 3 (comptes et suivi).
+3. Go / no-go pour la phase 3 (mémoire et progrès).
 
 ## Ce qui a été vérifié sans toi (session de construction)
 

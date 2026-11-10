@@ -13,7 +13,7 @@ Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 2, mode 
 - **Phase 2 construite** (personnages et scènes), branche `phase-2` (partie
   de `phase-1`), guide [docs/tests/phase-2.md](tests/phase-2.md). Le site
   de test montre la dernière branche poussée, donc la phase 2.
-- Prochaine étape (autopilote) : phase 3, ouverte par la session
+- Prochaine étape (autopilote) : phase 3 (mémoire et progrès), ouverte par la session
   orchestratrice. Franco teste les guides 1 puis 2 à son retour.
 
 ## Mode autopilote (Franco absent)
