@@ -1062,6 +1062,9 @@ body.page {
 .pron-card p {
   margin: 0 0 var(--space-2);
 }
+.pron-card .review-top {
+  flex-wrap: wrap;
+}
 .pron-card .chip {
   white-space: nowrap;
 }

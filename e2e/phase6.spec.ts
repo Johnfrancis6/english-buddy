@@ -203,7 +203,8 @@ test('pronunciation: score per word, sounds to work on, FSRS cards, progress', a
           const s = tx.objectStore('cards');
           const all = s.getAll();
           all.onsuccess = () => {
-            for (const c of all.result) s.put({ ...c, fsrs: { ...c.fsrs, dueAt: 0 } });
+            for (const c of all.result)
+              s.put({ ...c, fsrs: { ...c.fsrs, dueAt: Date.now() - 1000 } });
           };
           tx.oncomplete = () => {
             req.result.close();
@@ -237,7 +238,7 @@ test('pronunciation: score per word, sounds to work on, FSRS cards, progress', a
   expect(overflow).toBeLessThanOrEqual(0);
   await shot(page, 'p6-sentence-420');
   await dialog.getByRole('button', { name: 'Enregistrer' }).click();
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(2500);
   await dialog.getByRole('button', { name: 'J’ai fini' }).click();
   await expect(dialog.locator('.pron-result')).toBeVisible({ timeout: 30_000 });
   const overflow2 = await page.evaluate(() => {

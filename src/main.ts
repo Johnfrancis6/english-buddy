@@ -1127,6 +1127,8 @@ const pronView = new PronunciationView(
       return { result, added, graded: updates.length, check };
     },
     errorText: (err) => {
+      log(`Prononciation, erreur : ${String((err as Error)?.message ?? err).slice(0, 200)}`);
+      console.warn('pronunciation', err);
       if ((err as Error)?.message === 'missing-key')
         return 'Il faut une clé Gemini gratuite pour noter ta prononciation : ajoute-la dans « Réglages ».';
       if (err instanceof DOMException && err.name === 'NotAllowedError')
