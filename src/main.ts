@@ -62,7 +62,7 @@ import { missionById, unlockMap, type Mission } from './habit/missions';
 import { computeStreak, dayKey } from './habit/streak';
 import { challengeDoneToday, missionRecords, nextDueFr } from './habit/today';
 import { dueCards, draftsFromDebrief, type ReviewCard } from './reviews/cards';
-import { addDrafts, applyTalk, gradeCard, listCards, putCard } from './storage/cards';
+import { addDrafts, applyTalk, applyUpdates, gradeCard, listCards, putCard } from './storage/cards';
 import { talkStats } from './progress/stats';
 import {
   cloudConfig,
@@ -85,6 +85,16 @@ import { deleteDoc, listDocs, putDoc } from './storage/docs';
 import { cardId } from './reviews/cards';
 import { loadWelcome, saveWelcome, shouldOpenWelcome, LEVEL_CHOICES } from './onboarding/welcome';
 import { listMicrophones } from './onboarding/micTest';
+import { PronunciationView } from './ui/pronunciationView';
+import { buildExercises } from './pronunciation/sentences';
+import { pronProgress, soundLevels, type PronAttempt } from './pronunciation/progress';
+import { makeScorer, scorerNameFr } from './pronunciation/factory';
+import { pronUpdates, soundDrafts } from './pronunciation/cards';
+import { recordTake } from './pronunciation/recorder';
+import { SOUNDS } from './pronunciation/sounds';
+import { AZURE_REGIONS } from './pronunciation/azure';
+import { WhisperCheckedScorer } from './pronunciation/whisperCheck';
+import { listAttempts, saveAttempt } from './storage/pron';
 
 const modelUrl = (c: CastMember) => `${import.meta.env.BASE_URL}models/${c.model}`;
 const picture = (kind: 'scenes' | 'people', id: string) =>
@@ -367,6 +377,12 @@ async function renderToday(): Promise<void> {
     : 'Tes fautes et tes mots deviendront des cartes après tes bilans.';
   $<HTMLButtonElement>('open-reviews').disabled = due.length === 0;
   $('today').dataset.due = String(due.length);
+  const pron = pronProgress(await listAttempts().catch(() => [] as PronAttempt[]), now);
+  const weakest = pron.sounds[0];
+  $('pron-line').textContent =
+    pron.score === null
+      ? '5 phrases à lire : th, h, r, voyelles, -ed, accent du mot. Chaque mot est noté.'
+      : `Note estimée : ${pron.score}/100${weakest ? ` · à travailler : ${SOUNDS[weakest.sound].labelFr.toLowerCase()}` : ''}`;
   $('today').dataset.streak = String(streak.days);
 }
 
@@ -941,11 +957,13 @@ async function openMemory(): Promise<void> {
 async function openProgress(): Promise<void> {
   const talks = await listTalks().catch(() => [] as SavedTalk[]);
   const p = buildProgress(talks, Date.now());
+  const pron = pronProgress(await listAttempts().catch(() => [] as PronAttempt[]), Date.now());
   $('progress-meta').textContent =
     `${p.totalTalks} conversation${p.totalTalks > 1 ? 's' : ''} gardée${p.totalTalks > 1 ? 's' : ''} dans ce navigateur`;
   renderProgress(
     $('progress-body'),
     p,
+    pron,
     talks.map((t) => ({
       id: t.id,
       label: `${new Date(t.startedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · ${characterName(t.character ?? 'jake')} · ${sceneInfo(t.scene ?? 'cafe').labelFr.toLowerCase()} · ${formatDuration(t.durationMs)}`,
@@ -1060,6 +1078,99 @@ $('map-free').addEventListener('click', () => {
   plan = FREE_PLAN;
   mapDialog.close();
   renderHomePlan();
+});
+
+// ----------------------------------------------------------- pronunciation
+const pronDialog = $<HTMLDialogElement>('pronunciation');
+let pronScorerLabel = 'Gemini';
+
+/** The browser's own English voice, as a model to imitate (absent in some browsers). */
+function speakModel(text: string): void {
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const voices = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith('en'));
+  const voice = voices.find((v) => /en-us/i.test(v.lang)) ?? voices[0];
+  if (voice) u.voice = voice;
+  u.lang = voice?.lang ?? 'en-US';
+  u.rate = 0.85;
+  synth.speak(u);
+}
+
+const pronView = new PronunciationView(
+  $('pron-body'),
+  $('pron-meta'),
+  {
+    record: (onLevel) => recordTake(loadSettings().micDeviceId, onLevel),
+    score: async (e, wav) => {
+      const scorer = makeScorer(loadSettings());
+      if (!scorer) throw new Error('missing-key');
+      // The take lives only in this call: it is not saved and is forgotten after scoring.
+      const result = await scorer.score({ wav, reference: e.text });
+      const now = Date.now();
+      const attempt: PronAttempt = {
+        id: `pron-${now}-${Math.random().toString(36).slice(2, 7)}`,
+        at: now,
+        sentence: e.text,
+        source: e.source,
+        result,
+      };
+      await saveAttempt(attempt);
+      const cards = await listCards().catch(() => [] as ReviewCard[]);
+      const updates = pronUpdates(cards, attempt, now);
+      await applyUpdates(cards, updates, attempt.id, now);
+      const added = await addDrafts(soundDrafts(attempt), cards);
+      const check = scorer instanceof WhisperCheckedScorer ? scorer.lastCheck : '';
+      log(
+        `Prononciation (${scorerNameFr(result.scorer)}, ${result.model}) : ${result.overall}/100${result.unreliable ? ' (son peu fiable)' : ''}, ${added} carte(s) ajoutée(s), ${updates.length} révision(s)${check ? ` · ${check}` : ''}`,
+      );
+      return { result, added, graded: updates.length, check };
+    },
+    errorText: (err) => {
+      if ((err as Error)?.message === 'missing-key')
+        return 'Il faut une clé Gemini gratuite pour noter ta prononciation : ajoute-la dans « Réglages ».';
+      if (err instanceof DOMException && err.name === 'NotAllowedError')
+        return 'Le micro est refusé. Autorise-le dans la barre d’adresse du navigateur, puis réessaie.';
+      if (err instanceof DOMException) return 'Le micro ne s’ouvre pas. Vérifie qu’il est branché.';
+      const pe = asProviderError(err, 'gemini');
+      return pe.french;
+    },
+    speak: 'speechSynthesis' in window ? speakModel : null,
+    done: (n) => {
+      if (n) log(`Prononciation : ${n} phrase(s) notée(s)`);
+      void renderToday();
+    },
+  },
+  () => pronScorerLabel,
+);
+
+async function openPronunciation(): Promise<void> {
+  const now = Date.now();
+  const s = loadSettings();
+  const scorer = makeScorer(s);
+  if (!scorer) {
+    welcome.open('gemini');
+    return;
+  }
+  pronScorerLabel = scorerNameFr(scorer.id);
+  const [cards, attempts] = await Promise.all([
+    listCards().catch(() => [] as ReviewCard[]),
+    listAttempts().catch(() => [] as PronAttempt[]),
+  ]);
+  const items = buildExercises(cards, soundLevels(pronProgress(attempts, now)), now);
+  pronView.start(items);
+  if (!pronDialog.open) {
+    pronDialog.showModal();
+    $('pron-title').focus();
+    pronDialog.scrollTop = 0;
+  }
+}
+$('open-pron').addEventListener('click', () => void openPronunciation());
+$('pron-close').addEventListener('click', () => pronDialog.close());
+pronDialog.addEventListener('close', () => {
+  pronView.stop();
+  window.speechSynthesis?.cancel();
+  void renderToday();
 });
 
 /**
@@ -1274,6 +1385,9 @@ for (const x of TRANSCRIPT_SOURCES) sourceSelect.add(new Option(x.label, x.id));
 for (const m of ANALYSIS_MODELS) analysisSelect.add(new Option(m.label, m.id));
 const micSelect = $<HTMLSelectElement>('mic-device');
 const levelSelect = $<HTMLSelectElement>('start-level');
+const azureInput = $<HTMLInputElement>('azure-key');
+const azureRegion = $<HTMLSelectElement>('azure-region');
+for (const r of AZURE_REGIONS) azureRegion.add(new Option(r, r));
 for (const l of LEVEL_CHOICES) levelSelect.add(new Option(`${l.title} (${l.id})`, l.id));
 
 /** Microphones of this computer; the saved one stays selected even if unplugged. */
@@ -1294,13 +1408,16 @@ function keyStatusText(s: Settings): string {
     ? `Clé Gemini enregistrée dans ce navigateur : ${maskKey(s.apiKey)}`
     : 'Aucune clé Gemini enregistrée pour l’instant.';
   const groq = s.groqKey ? ` Clé Groq : ${maskKey(s.groqKey)}.` : ' Pas de clé Groq.';
-  return gemini + groq;
+  const azure = s.azureKey ? ` Clé Azure : ${maskKey(s.azureKey)} (${s.azureRegion}).` : '';
+  return gemini + groq + azure;
 }
 
 function openSettings(): void {
   settings = loadSettings();
   keyInput.value = settings.apiKey;
   groqInput.value = settings.groqKey;
+  azureInput.value = settings.azureKey;
+  azureRegion.value = settings.azureRegion;
   modelSelect.value = settings.model;
   voiceSelect.value = settings.voiceOverride;
   pauseSelect.value = String(settings.pauseMs);
@@ -1460,9 +1577,10 @@ const welcome = new WelcomeView($<HTMLDialogElement>('welcome'), {
   log,
 });
 $('forget-key').addEventListener('click', () => {
-  saveSettings({ ...loadSettings(), apiKey: '', groqKey: '' });
+  saveSettings({ ...loadSettings(), apiKey: '', groqKey: '', azureKey: '' });
   keyInput.value = '';
   groqInput.value = '';
+  azureInput.value = '';
   keyStatus.textContent = 'Clés effacées de ce navigateur.';
 });
 $('clear-talks').addEventListener('click', () => {
@@ -1483,6 +1601,8 @@ settingsDialog.addEventListener('close', () => {
     ...loadSettings(),
     apiKey: keyInput.value,
     groqKey: groqInput.value,
+    azureKey: azureInput.value,
+    azureRegion: azureRegion.value || DEFAULTS.azureRegion,
     model: modelSelect.value || DEFAULTS.model,
     voiceOverride: voiceSelect.value,
     pauseMs: Number(pauseSelect.value) || DEFAULTS.pauseMs,

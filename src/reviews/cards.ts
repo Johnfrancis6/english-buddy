@@ -8,18 +8,18 @@ import type { Grade, StoredFsrs } from './fsrs';
  * ts-fsrs, reviewed out loud (self-graded) or inside the daily challenge
  * (graded by the debrief). Text only, kept in this browser.
  */
-export type CardKind = 'mistake' | 'word';
+export type CardKind = 'mistake' | 'word' | 'sound';
 
 export interface ReviewCard {
   id: string;
   kind: CardKind;
-  /** mistake: what the learner said; word: the French meaning. */
+  /** mistake: what the learner said; word: the French meaning; sound: the English word. */
   front: string;
-  /** mistake: the right form; word: the English word or expression. */
+  /** mistake: the right form; word: the English word or expression; sound: the French tip. */
   back: string;
   /** mistake: its type. */
   type?: MistakeType;
-  /** mistake: the French explanation; word: an English example. */
+  /** mistake: the French explanation; word: an English example; sound: the sentence. */
   note: string;
   talkId: string;
   character?: string;
@@ -33,8 +33,11 @@ export interface ReviewCard {
 export interface CardReview {
   at: number;
   grade: Grade;
-  /** self: flash review; talk: judged in a talk; repeat: the same mistake came back. */
-  via: 'self' | 'talk' | 'repeat';
+  /**
+   * self: flash review; talk: judged in a talk; repeat: the same mistake came
+   * back; pron: scored in the pronunciation exercise.
+   */
+  via: 'self' | 'talk' | 'repeat' | 'pron';
   talkId?: string;
 }
 
@@ -167,5 +170,6 @@ export function updatesFromTalk(
 
 /** French label of a card, for lists. */
 export function cardLabelFr(c: ReviewCard): string {
+  if (c.kind === 'sound') return 'Prononciation';
   return c.kind === 'mistake' && c.type ? MISTAKE_TYPES[c.type] : 'Mot ou expression';
 }

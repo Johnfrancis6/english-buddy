@@ -80,6 +80,7 @@ function cardView(
   next: (advanced: boolean) => void,
 ): HTMLElement {
   const mistake = c.kind === 'mistake';
+  const sound = c.kind === 'sound';
   const box = el('article', { class: 'review-card', 'data-kind': c.kind, 'data-id': c.id });
   box.append(
     el(
@@ -88,24 +89,43 @@ function cardView(
       `Carte ${i + 1} sur ${n} · `,
       el('span', { class: 'chip', text: cardLabelFr(c) }),
     ),
-    el('p', { class: 'review-ask', text: mistake ? 'Tu as dit :' : 'Comment dit-on en anglais :' }),
+    el('p', {
+      class: 'review-ask',
+      text: sound
+        ? 'Prononce ce mot à voix haute, puis la phrase :'
+        : mistake
+          ? 'Tu as dit :'
+          : 'Comment dit-on en anglais :',
+    }),
     el('p', {
       class: mistake ? 'review-front said' : 'review-front',
-      lang: mistake ? 'en' : 'fr',
-      text: mistake ? c.front : `« ${c.front} »`,
+      lang: mistake || sound ? 'en' : 'fr',
+      text: mistake || sound ? c.front : `« ${c.front} »`,
+    }),
+    el('p', {
+      class: 'muted',
+      lang: 'en',
+      text: sound ? c.note : '',
+      hidden: sound ? undefined : '',
     }),
     el('p', {
       class: 'muted small',
-      text: mistake
-        ? 'Dis la bonne phrase à voix haute, puis regarde la réponse.'
-        : 'Dis-le à voix haute dans une phrase à toi, puis regarde la réponse.',
+      text: sound
+        ? 'Lentement, puis à vitesse normale. Pour être écouté et noté, utilise « Prononciation » sur l’accueil.'
+        : mistake
+          ? 'Dis la bonne phrase à voix haute, puis regarde la réponse.'
+          : 'Dis-le à voix haute dans une phrase à toi, puis regarde la réponse.',
     }),
   );
   const answer = el(
     'div',
     { class: 'review-answer' },
-    el('p', { class: 'correct', lang: 'en', text: c.back }),
-    c.note
+    el('p', {
+      class: sound ? 'explain' : 'correct',
+      lang: sound ? 'fr' : 'en',
+      text: c.back,
+    }),
+    c.note && !sound
       ? el('p', {
           class: mistake ? 'explain' : 'muted small',
           lang: mistake ? 'fr' : 'en',

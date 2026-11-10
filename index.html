@@ -10,7 +10,7 @@
     <canvas id="stage" data-ready="false" role="img" aria-label="Scène 3D"></canvas>
 
     <header class="topbar">
-      <div class="brand">English Buddy <span class="chip">phase 5 · test</span></div>
+      <div class="brand">English Buddy <span class="chip">phase 6 · test</span></div>
       <div class="row tight">
         <button id="open-home" class="btn" type="button" hidden>Changer de scène</button>
         <button id="open-map" class="btn" type="button">Missions</button>
@@ -44,6 +44,13 @@
             <span id="reviews-line" class="small muted"></span>
           </div>
           <button id="open-reviews" class="btn small" type="button">Réviser à voix haute</button>
+        </div>
+        <div class="today-row">
+          <div class="today-text">
+            <strong>Prononciation</strong>
+            <span id="pron-line" class="small muted"></span>
+          </div>
+          <button id="open-pron" class="btn small" type="button">M’entraîner</button>
         </div>
       </section>
       <h2>Le lieu</h2>
@@ -198,6 +205,21 @@
       </div>
     </dialog>
 
+    <dialog id="pronunciation" class="panel dialog pronunciation" aria-labelledby="pron-title">
+      <div class="dialog-head">
+        <h2 id="pron-title" tabindex="-1">Prononciation</h2>
+        <span id="pron-meta" class="muted small"></span>
+      </div>
+      <p class="note privacy small">
+        🔒 Ta voix reste en mémoire le temps d’être notée, puis elle est oubliée : rien n’est
+        enregistré. Seuls la phrase et les notes restent dans ce navigateur.
+      </p>
+      <div id="pron-body"></div>
+      <div class="row">
+        <button id="pron-close" class="btn" type="button">Fermer</button>
+      </div>
+    </dialog>
+
     <dialog id="map" class="panel dialog map" aria-labelledby="map-title">
       <div class="dialog-head">
         <h2 id="map-title" tabindex="-1">Carte des missions</h2>
@@ -297,6 +319,29 @@
         </p>
         <label for="analysis-model">Modèle du bilan</label>
         <select id="analysis-model"></select>
+        <h3>Prononciation</h3>
+        <p class="muted small">
+          Par défaut, Gemini écoute tes phrases et note chaque mot (avec un contrôle par Groq si tu
+          as une clé Groq). Pour une mesure plus fine, son par son, tu peux ajouter une clé Azure
+          Speech (compte Microsoft Azure, offre gratuite de 5 heures par mois).
+        </p>
+        <details class="advanced">
+          <summary>Clé Azure Speech (facultative)</summary>
+          <label for="azure-key">Ta clé Azure Speech</label>
+          <input
+            id="azure-key"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Clé 1 de ta ressource Speech"
+          />
+          <label for="azure-region">Région de la ressource</label>
+          <select id="azure-region"></select>
+          <p class="muted small">
+            🔒 Elle reste dans ton navigateur et n’est envoyée qu’à Microsoft, avec le son de la
+            phrase à noter (oublié ensuite).
+          </p>
+        </details>
         <h3>Compte (facultatif)</h3>
         <p id="cloud-status" class="muted small" aria-live="polite">
           Les comptes ne sont pas encore activés : tout reste dans ce navigateur.

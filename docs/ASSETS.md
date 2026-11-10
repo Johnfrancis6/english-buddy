@@ -68,3 +68,7 @@ worker file carries.
 Phase 4 content (missions, expressions to place) is written for this project.
 Phase 5 texts (welcome, documents) are written for this project; imported
 documents belong to the learner and stay in their browser (never committed).
+Phase 6 (pronunciation) adds no third-party asset and no library: the 24
+practice sentences, the sound tips and the spelling rules are written for this
+project; "Écouter le modèle" uses the voices already installed in the
+learner's browser (`speechSynthesis`), nothing is downloaded or shipped.

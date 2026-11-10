@@ -1,7 +1,8 @@
 /**
  * User settings. API keys live in this browser's localStorage only: they are
  * never committed, logged, or sent anywhere except to the provider they
- * belong to (Google for the Gemini key, Groq for the Groq key).
+ * belong to (Google for the Gemini key, Groq for the Groq key, Microsoft for
+ * the optional Azure Speech key).
  */
 // Live model IDs checked on 2026-11-09 at https://aistudio.google.com/docs/models
 export const MODELS = [
@@ -78,6 +79,9 @@ export interface Settings {
   micDeviceId: string;
   /** Level the learner says they have, until debriefs estimate it. */
   startLevel: Level;
+  /** Optional Azure Speech key for pronunciation scoring (phase 6), and its region. */
+  azureKey: string;
+  azureRegion: string;
 }
 
 const KEY = 'english-buddy.settings.v1';
@@ -94,6 +98,8 @@ export const DEFAULTS: Settings = {
   showTranscript: true,
   micDeviceId: '',
   startLevel: 'B1',
+  azureKey: '',
+  azureRegion: 'westeurope',
 };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
@@ -137,6 +143,11 @@ export function loadSettings(store: Store = localStorage): Settings {
       showTranscript: typeof p.showTranscript === 'boolean' ? p.showTranscript : true,
       micDeviceId: typeof p.micDeviceId === 'string' ? p.micDeviceId : '',
       startLevel: pick(p.startLevel, LEVELS, DEFAULTS.startLevel),
+      azureKey: typeof p.azureKey === 'string' ? p.azureKey : '',
+      azureRegion:
+        typeof p.azureRegion === 'string' && /^[a-z0-9]{3,30}$/.test(p.azureRegion)
+          ? p.azureRegion
+          : DEFAULTS.azureRegion,
     };
   } catch {
     return { ...DEFAULTS };
@@ -144,7 +155,15 @@ export function loadSettings(store: Store = localStorage): Settings {
 }
 
 export function saveSettings(s: Settings, store: Store = localStorage): void {
-  store.setItem(KEY, JSON.stringify({ ...s, apiKey: s.apiKey.trim(), groqKey: s.groqKey.trim() }));
+  store.setItem(
+    KEY,
+    JSON.stringify({
+      ...s,
+      apiKey: s.apiKey.trim(),
+      groqKey: s.groqKey.trim(),
+      azureKey: s.azureKey.trim(),
+    }),
+  );
 }
 
 /** "AIza…abcd": enough to recognise the key without showing it. */

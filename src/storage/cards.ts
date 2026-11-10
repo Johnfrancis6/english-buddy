@@ -3,6 +3,7 @@ import {
   FIRST_DELAY_MS,
   updatesFromTalk,
   type CardDraft,
+  type CardReview,
   type CardUpdate,
   type ReviewCard,
 } from '../reviews/cards';
@@ -35,7 +36,7 @@ export async function gradeCard(
   card: ReviewCard,
   grade: Grade,
   now: number,
-  via: 'self' | 'talk' | 'repeat' = 'self',
+  via: CardReview['via'] = 'self',
   talkId?: string,
 ): Promise<ReviewCard> {
   const next = await graded(card, grade, now, via, talkId);
@@ -47,7 +48,7 @@ async function graded(
   card: ReviewCard,
   grade: Grade,
   now: number,
-  via: 'self' | 'talk' | 'repeat',
+  via: CardReview['via'],
   talkId?: string,
 ): Promise<ReviewCard> {
   return {
@@ -77,9 +78,22 @@ export async function addDrafts(
 export async function applyTalk(talkId: string, d: Debrief, now: number): Promise<CardUpdate[]> {
   const cards = await listCards();
   const updates = updatesFromTalk(cards, talkId, d);
+  await applyUpdates(cards, updates, talkId, now);
+  return updates;
+}
+
+/** Applies grades computed elsewhere (a talk, a pronunciation exercise). */
+export async function applyUpdates(
+  cards: readonly ReviewCard[],
+  updates: readonly CardUpdate[],
+  talkId: string,
+  now: number,
+): Promise<void> {
   const byId = new Map(cards.map((c) => [c.id, c]));
   const next: ReviewCard[] = [];
-  for (const u of updates) next.push(await graded(byId.get(u.id)!, u.grade, now, u.via, talkId));
+  for (const u of updates) {
+    const c = byId.get(u.id);
+    if (c) next.push(await graded(c, u.grade, now, u.via, talkId));
+  }
   await putCards(next);
-  return updates;
 }

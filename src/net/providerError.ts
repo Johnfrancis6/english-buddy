@@ -1,9 +1,13 @@
-/** Errors from the HTTP providers (Gemini text models, Groq), in plain French. */
-export type Provider = 'gemini' | 'groq';
+/** Errors from the HTTP providers (Gemini text models, Groq, Azure Speech), in plain French. */
+export type Provider = 'gemini' | 'groq' | 'azure';
 export type ProviderErrorKind =
   'bad-key' | 'quota' | 'model' | 'network' | 'blocked' | 'bad-output' | 'unknown';
 
-const NAMES: Record<Provider, string> = { gemini: 'Google (Gemini)', groq: 'Groq' };
+const NAMES: Record<Provider, string> = {
+  gemini: 'Google (Gemini)',
+  groq: 'Groq',
+  azure: 'Microsoft (Azure Speech)',
+};
 
 export class ProviderError extends Error {
   constructor(
@@ -21,9 +25,11 @@ export class ProviderError extends Error {
     const who = NAMES[this.provider];
     switch (this.kind) {
       case 'bad-key':
-        return this.provider === 'groq'
-          ? 'Groq refuse ta clé Groq. Vérifie-la dans « Réglages » (elle commence par gsk_).'
-          : 'Google refuse ta clé Gemini. Vérifie-la dans « Réglages ».';
+        if (this.provider === 'groq')
+          return 'Groq refuse ta clé Groq. Vérifie-la dans « Réglages » (elle commence par gsk_).';
+        if (this.provider === 'azure')
+          return 'Microsoft refuse ta clé Azure Speech. Vérifie la clé et la région dans « Réglages ».';
+        return 'Google refuse ta clé Gemini. Vérifie-la dans « Réglages ».';
       case 'quota':
         return `${who} a refusé la demande : quota gratuit atteint pour l’instant. Réessaie dans une minute.`;
       case 'model':

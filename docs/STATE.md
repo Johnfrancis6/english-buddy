@@ -1,6 +1,6 @@
 # État du projet — English Buddy
 
-Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 5, mode autopilote).
+Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 6, mode autopilote).
 
 ## Où on en est
 
@@ -22,8 +22,12 @@ Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 5, mode 
 - **Phase 5 construite** (accueil et documents), branche `phase-5` (partie
   de `phase-4`), guide [docs/tests/phase-5.md](tests/phase-5.md). Le site de
   test montre désormais la phase 5.
-- Prochaine étape (autopilote) : phase 6 (prononciation), ouverte par la
-  session orchestratrice. Franco teste les guides 1 à 5 à son retour.
+- **Phase 6 construite** (prononciation), branche `phase-6` (partie de
+  `phase-5`), guide [docs/tests/phase-6.md](tests/phase-6.md), comparaison
+  des options dans [docs/PRONUNCIATION.md](PRONUNCIATION.md). Le site de test
+  montre désormais la phase 6.
+- Prochaine étape (autopilote) : phase 7 (chant), ouverte par la session
+  orchestratrice. Franco teste les guides 1 à 6 à son retour.
 
 ## Mode autopilote (Franco absent)
 
@@ -59,6 +63,16 @@ amis et avant la fusion dans `main`.
       Le test du micro reconnaît-il ta voix et ton casque ? Importer 2 ou 3
       vrais PDF (article, cours avec colonnes) : texte propre ? Mots
       difficiles bien choisis ? Le personnage étudie-t-il bien le passage ?
+- [ ] Phase 6 : faire les 5 phrases avec ta vraie voix ; **les notes par mot
+      sont-elles justes ?** (exagère « sink » pour « think » : la note
+      baisse-t-elle ?) ; « Écouter le modèle » marche-t-il dans Firefox ?
+- [ ] Phase 6, **facultatif mais conseillé** — clé **Azure Speech** (mesure
+      son par son, gratuite jusqu'à 5 h par mois) : créer un compte Microsoft
+      Azure (carte bancaire probablement demandée pour l'identité), une
+      ressource « Speech » en niveau **Free F0** (région France Central ou
+      West Europe), copier « KEY 1 » et la région dans Réglages →
+      « Prononciation ». Étapes détaillées dans le guide de la phase 6, partie
+      4. Sans elle, Gemini note tout seul.
 - [ ] Phase 3, **facultatif** — activer les comptes en ligne (Supabase,
       gratuit), environ 10 minutes :
   1. Va sur <https://supabase.com>, clique sur « Start your project » et
@@ -91,6 +105,54 @@ amis et avant la fusion dans `main`.
      est mis en pause (un clic pour le relancer).
 - [ ] Ouvrir la pull request finale vers `main` et la fusionner (ou la
       demander à Claude).
+
+## Auto-critique de la phase 6
+
+Ce qui marche (mesuré dans la session de construction, Google et Groq
+**simulés**, micro factice de Chromium, sans GPU) :
+
+- Comparaison écrite des quatre options (docs du jour) : Groq ne donne pas de
+  confiance par mot (doc) ; Azure accepte l'appel depuis le site (préflight
+  CORS 204, fausse clé 401, **mesuré**) ; poids des modèles phonétiques
+  ONNX **mesuré** (197 Mo à 1,26 Go ; 355 Mo). Choix noté dans DECISIONS.md.
+- Exercice : une prise du micro choisi (arrêt sur silence ou « J'ai fini »)
+  part en WAV à Gemini avec la phrase et le schéma JSON, et à Groq en
+  `verbose_json` + horodatage par mot ; note par mot (✓ ~ ✗ + chiffre), sons
+  à travailler, conseils, « La machine a entendu » (test Playwright).
+- Contrôle Whisper : un mot non reconnu est plafonné à 55 (tests de logique).
+- Azure : en-tête et lecture de la réponse testés sur l'exemple de la doc.
+- Cartes FSRS « Prononciation » créées sous 60, notées par le score quand le
+  mot revient, visibles dans les révisions ; la carte due ouvre l'exercice
+  (Playwright).
+- Rien d'audio dans IndexedDB : seulement la phrase et les notes (test qui lit
+  le stockage). « Mes progrès » : barre « Prononciation » et sons à
+  travailler. Captures vérifiées contre DESIGN.md à 1280 et 420 px ; lint,
+  161 tests de logique, Playwright au vert.
+
+Ce qui est **supposé, pas mesuré** :
+
+- **La justesse de Gemini comme juge de prononciation** : la doc de Google ne
+  promet rien sur la prononciation. Risques : trop gentil, problèmes
+  inventés, notes qui varient d'un essai à l'autre. C'est le risque principal
+  de la phase.
+- Que Whisper repère les mots vraiment mal dits (il est fait pour comprendre
+  les accents ; son modèle de langue devine des mots).
+- La forme réelle d'une réponse Azure (jamais reçue) et que la notation de
+  prononciation consomme bien les 5 h gratuites (doc floue).
+- Le seuil de voix qui arrête la prise avec un vrai micro et une vraie voix.
+
+Ce qui est faible :
+
+- Les sons difficiles sont repérés d'après l'orthographe (règles écrites à la
+  main) : « car » n'est pas marqué « r », quelques mots seront mal classés.
+- L'accent du mot n'est jugé que par Gemini (Azure ne donne pas d'accent par
+  mot dans sa réponse REST) ; aucune mesure acoustique de l'accent.
+- La note de prononciation reste **hors du niveau B1/B2/C1** (choix assumé :
+  phrases lues, autre mesure) ; à revoir avec Franco.
+- « Écouter le modèle » dépend des voix installées sur l'ordinateur.
+- Une phrase lue n'est pas une conversation : la prononciation pendant les
+  conversations n'est pas notée (le bilan garde ses « prononciation
+  (probable) » devinées).
 
 ## Auto-critique de la phase 5
 
@@ -397,12 +459,13 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Autopilote : phase 6 (prononciation : score par mot, sons difficiles ;
-  comparer d'abord les options gratuites), modèle conseillé **Opus 5.5**,
-  branche `phase-6` créée depuis `phase-5`, ouverte par la session
-  orchestratrice. Prêt pour elle : le micro choisi (`micDeviceId`), le niveau
-  de départ, les cartes « mot » (une carte de prononciation peut suivre le
-  même modèle que `cardId('word', …)`).
+- Autopilote : phase 7 (chant : d'abord un essai « qu'est-ce qui peut
+  chanter gratuitement ? », puis karaoké noté, duo avec Maya, chansons tirées
+  des fautes), modèle conseillé **Fable 5.2**, branche `phase-7` créée
+  depuis `phase-6`, ouverte par la session orchestratrice. Prêt pour elle :
+  `PronunciationScorer` (score par mot d'une phrase connue : réutilisable
+  pour noter les paroles chantées), l'enregistreur de prise
+  (`recordTake`), les sons difficiles (`sounds.ts`).
 
 ## Journal
 
@@ -421,8 +484,16 @@ Ce qui est faible :
 | 2026-11-10 | Phase 4 | Révisions FSRS (ts-fsrs 6.0.0) de ses propres fautes et des mots des bilans, à voix haute et auto-notées ; défi du jour de 5 minutes avec fautes à reprendre et expressions à placer, jugé par le bilan qui met les cartes à jour ; 9 missions sur une carte à 3 niveaux, réussies ou ratées avec une note ; expressions cochées en direct et remarquées par le personnage ; série de jours ≥ 3 min de parole avec un joker par semaine. Testé avec Google simulé | En attente (autopilote) |
 | 2026-11-10 | Phase 2 | DESIGN.md + styles partagés ; accueil (lieu + personnage) ; 5 personnages VRoid gratuits allégés (Jake, Emma, Maya, Ollie en veste, Lily 9 ans) ; décors toon café / bureau / rue ; marche, salut, hochement, rire, réflexion, check du poing déclenchés par la conversation ; voix et prompt par personnage ; mesures repliables avec images/s. Testé avec Google simulé, sans GPU | En attente (autopilote) |
 | 2026-11-10 | Phase 5 | Accueil guidé en français en 6 étapes (confidentialité, clé Gemini gratuite vérifiée, clé Groq facultative, choix et test du micro, niveau de départ, premier personnage), revisible depuis les réglages ; documents : import PDF lu dans le navigateur (PDF.js 6.5.438), passages, mots difficiles (Gemini Flash) ajoutés aux révisions FSRS, étude d'un passage avec un personnage, lien web seulement si le site l'autorise (CORS). Testé avec Google simulé | En attente (autopilote) |
+| 2026-11-10 | Phase 6 | Comparaison écrite des options de notation (Gemini, Groq Whisper, Azure, modèles dans le navigateur) ; exercice « Prononciation » derrière `PronunciationScorer` : Gemini par défaut, contrôle Groq Whisper facultatif, Azure facultatif ; 5 phrases (révisions, tes fautes et tes mots, sons th / h / r / voyelles / -ed / accent) ; note par mot et sons à travailler ; cartes FSRS « Prononciation » notées par le score ; « Mes progrès » : barre prononciation (estimation, hors niveau) et sons à travailler ; aucune voix gardée. Testé avec Google et Groq simulés | En attente (autopilote) |
 
 ## Points ouverts
+
+- Prononciation dans le niveau estimé : laissée à part (phrases lues) ; à
+  décider avec Franco après son test.
+- Modèle phonétique dans le navigateur (200–350 Mo) : seulement si Gemini et
+  Azure déçoivent.
+- Noter la prononciation pendant les conversations (pas seulement en phrases
+  lues) : demanderait d'envoyer chaque tour à un notateur (quota).
 
 - OCR des PDF scannés (Tesseract.js, gratuit, lourd) : si Franco le veut.
 - Documents dans le compte Supabase : non (texte complet local, comme le
@@ -486,6 +557,6 @@ Ce qui est faible :
   veut.
 - Mémoire par personnage plutôt que partagée : si Franco trouve étrange
   qu'Emma sache ce qu'il a dit à Jake.
-- Score de prononciation dans le niveau estimé : phase 6.
+- Score de prononciation dans le niveau estimé : phase 6 l'a gardé à part (voir plus haut).
 - Clés Supabase : la clé « anon » sera retirée par Supabase fin 2026 ; le
   code accepte la nouvelle clé « publishable ».

@@ -2,6 +2,9 @@ import { MISTAKE_TYPES, SKILLS, type SkillScores } from '../analysis/types';
 import { BANDS } from '../progress/level';
 import type { Progress, WeekStats } from '../progress/stats';
 import { el } from './dom';
+import type { PronProgress } from '../pronunciation/progress';
+import { SOUNDS } from '../pronunciation/sounds';
+import { scorerNameFr } from '../pronunciation/factory';
 
 /**
  * "Mes progrès": level estimate and sub-scores, then week-by-week figures
@@ -26,6 +29,7 @@ const decimal = (n: number) => String(n).replace('.', ',');
 export function renderProgress(
   root: HTMLElement,
   p: Progress,
+  pron: PronProgress,
   talks: readonly TalkRow[],
   openTalk: (id: string) => void,
 ): void {
@@ -37,10 +41,12 @@ export function renderProgress(
         text: 'Pas encore de progrès à montrer : parle avec un personnage, tes chiffres arriveront après le bilan.',
       }),
     );
+    if (pron.total) root.append(pronSection(pron));
     return;
   }
   root.append(
-    levelSection(p),
+    levelSection(p, pron),
+    pronSection(pron),
     tiles(p),
     mistakesTable(p),
     speakingBars(p),
@@ -48,7 +54,66 @@ export function renderProgress(
   );
 }
 
-function levelSection(p: Progress): HTMLElement {
+function skillRow(name: string, v: number, title: string, extra?: string): HTMLElement {
+  const bar = el('span', { class: 'skill-bar' }, el('span', { class: 'skill-fill' }));
+  (bar.firstChild as HTMLElement).style.width = `${v}%`;
+  for (const b of BANDS.slice(1)) {
+    const tick = el('span', { class: 'band-tick', 'data-band': b.band });
+    tick.style.left = `${b.from}%`;
+    bar.append(tick);
+  }
+  return el(
+    'div',
+    { class: extra ? `skill ${extra}` : 'skill', role: 'listitem', title },
+    el('span', { class: 'skill-name', text: name }),
+    bar,
+    el('span', { class: 'skill-value', text: String(v) }),
+  );
+}
+
+/** "Sons à travailler": one row per sound, weakest first (last 30 days). */
+function pronSection(pron: PronProgress): HTMLElement {
+  const section = el(
+    'section',
+    { class: 'chart pron-progress', 'aria-labelledby': 'pron-progress-title' },
+    el(
+      'h3',
+      { id: 'pron-progress-title' },
+      'Sons à travailler ',
+      el('span', { class: 'chip', text: 'estimation' }),
+    ),
+  );
+  if (!pron.sounds.length) {
+    section.append(
+      el('p', {
+        class: 'muted small',
+        text: 'Pas encore de prononciation notée : sur l’accueil, « Prononciation » → « M’entraîner ». Cinq phrases suffisent pour une première idée.',
+      }),
+    );
+    return section;
+  }
+  const list = el('div', { class: 'skills', role: 'list' });
+  for (const s of pron.sounds) {
+    list.append(
+      skillRow(
+        SOUNDS[s.sound].labelFr,
+        s.mean,
+        `${SOUNDS[s.sound].labelFr} : ${s.mean} sur 100 en moyenne sur ${s.words} mot${s.words > 1 ? 's' : ''}${s.issues ? `, ${s.issues} fois repéré comme faux (${s.examples.join(', ')})` : ''}`,
+        'sound',
+      ),
+    );
+  }
+  section.append(
+    list,
+    el('p', {
+      class: 'muted small',
+      text: `Moyenne des mots qui contiennent chaque son, sur 30 jours (${pron.total} phrase${pron.total > 1 ? 's' : ''} lue${pron.total > 1 ? 's' : ''} en tout, notées par ${scorerNameFr(pron.lastScorer ?? 'gemini')}). Le son le plus faible est en haut ; survole une ligne pour voir les mots repérés.`,
+    }),
+  );
+  return section;
+}
+
+function levelSection(p: Progress, pron: PronProgress): HTMLElement {
   const box = el('section', { class: 'level-box', 'aria-labelledby': 'level-title' });
   const lv = p.level;
   box.append(
@@ -67,6 +132,20 @@ function levelSection(p: Progress): HTMLElement {
         text: 'Pas encore de note par compétence : elle arrive avec le prochain bilan. En attendant, les personnages te parlent comme à un niveau B1.',
       }),
     );
+    if (pron.score !== null) {
+      box.append(
+        el(
+          'div',
+          { class: 'skills', role: 'list' },
+          skillRow(
+            'Prononciation',
+            pron.score,
+            `Prononciation : ${pron.score} sur 100 (estimation, hors niveau)`,
+            'pron',
+          ),
+        ),
+      );
+    }
     return box;
   }
   box.append(
@@ -78,20 +157,15 @@ function levelSection(p: Progress): HTMLElement {
   const list = el('div', { class: 'skills', role: 'list' });
   for (const k of Object.keys(SKILLS) as (keyof SkillScores)[]) {
     const v = lv.skills[k];
-    const bar = el('span', { class: 'skill-bar' }, el('span', { class: 'skill-fill' }));
-    (bar.firstChild as HTMLElement).style.width = `${v}%`;
-    for (const b of BANDS.slice(1)) {
-      const tick = el('span', { class: 'band-tick', 'data-band': b.band });
-      tick.style.left = `${b.from}%`;
-      bar.append(tick);
-    }
+    list.append(skillRow(SKILLS[k], v, `${SKILLS[k]} : ${v} sur 100`));
+  }
+  if (pron.score !== null) {
     list.append(
-      el(
-        'div',
-        { class: 'skill', role: 'listitem', title: `${SKILLS[k]} : ${v} sur 100` },
-        el('span', { class: 'skill-name', text: SKILLS[k] }),
-        bar,
-        el('span', { class: 'skill-value', text: String(v) }),
+      skillRow(
+        'Prononciation',
+        pron.score,
+        `Prononciation : ${pron.score} sur 100, moyenne de tes ${pron.attempts} dernières phrases lues (estimation, hors niveau)`,
+        'pron',
       ),
     );
   }
@@ -105,6 +179,14 @@ function levelSection(p: Progress): HTMLElement {
     ),
   );
   box.append(list);
+  if (pron.score !== null) {
+    box.append(
+      el('p', {
+        class: 'muted small',
+        text: `Prononciation : moyenne de tes ${pron.attempts} dernière${pron.attempts > 1 ? 's' : ''} phrase${pron.attempts > 1 ? 's' : ''} lue${pron.attempts > 1 ? 's' : ''} à voix haute, notée${pron.attempts > 1 ? 's' : ''} mot par mot par la machine. Elle ne compte pas dans le niveau B1/B2/C1 : c’est une autre mesure (des phrases lues, pas une conversation).`,
+      }),
+    );
+  }
   return box;
 }
 
