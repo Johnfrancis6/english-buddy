@@ -13,11 +13,21 @@ Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 1).
 - Prochaine étape : retour de Franco (labo transcription, conversation,
   bilan), puis go / no-go pour la phase 2.
 
-## Ce que Franco doit faire maintenant
+## Mode autopilote (Franco absent)
 
-- [ ] (Conseillé) Créer une clé Groq gratuite : étapes dans le guide, test 1a.
-- [ ] Suivre [docs/tests/phase-1.md](tests/phase-1.md) et renvoyer : résultats
-      du labo, rapport, bilan copié, remarques, go / no-go.
+Depuis le 2026-11-10, les phases s'enchaînent sans attendre le feu vert de
+Franco (règles dans `CLAUDE.md`). La session de la phase 1 sert de chef
+d'orchestre : elle ouvre chaque session de phase et vérifie chaque jour que
+la chaîne avance. Arrêt prévu : fin de la phase 8, **avant** l'invitation des
+amis et avant la fusion dans `main`.
+
+## À faire au retour de Franco
+
+- [ ] Tester les guides `docs/tests/phase-1.md`, puis phase 2, 3… dans
+      l'ordre, et donner les remarques.
+- [ ] Phase 1 : labo transcription (choisit la source qui garde les fautes).
+- [ ] Ouvrir la pull request finale vers `main` et la fusionner (ou la
+      demander à Claude).
 
 ## Auto-critique de la phase 1
 

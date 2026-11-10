@@ -34,3 +34,33 @@ in [docs/DECISIONS.md](docs/DECISIONS.md).
   `docs/BRIEF.md`, branch `phase-N`, and a precise starting prompt (what was
   measured, what is still unverified, what to do first, where to stop). Then
   tell Franco the session is open. Never start the next phase before his go.
+
+## Autopilot mode (Franco away, decided 2026-11-10)
+
+Franco asked that sessions chain on their own until the final product while
+he is away. Until he says he is back, these rules **replace** "stop at the end
+of the phase and wait for Franco's go":
+
+- An **orchestrator session** (`session_01Cw13LeV4Nk6LbcMcDAQraA`, the
+  phase-1 session) opens each phase session. At the end of your phase, do not
+  open the next session yourself: send the orchestrator a message with
+  `send_message` that starts with `PHASE <N> DONE` (or `PHASE <N> BLOCKED`)
+  and gives the branch, the preview link, and what is measured vs assumed.
+  A phase may need several sessions: then send `PHASE <N> CONTINUE` with the
+  exact next step.
+- Branch `phase-N` starts from the previous phase branch (nothing is merged
+  to `main` while Franco is away). Never create a pull request, never merge,
+  never invite anyone.
+- Still required at the end of each phase: deployed preview, French test
+  guide, self-critique, a line in the `STATE.md` log. Franco tests all the
+  guides in a row when he is back.
+- Anything only Franco can do (create an account, give a key, test with a
+  real voice, invite friends) goes to the "À faire au retour" list in
+  `STATE.md`; build a fallback so the phase still works without it.
+- **Interface harmony**: follow `docs/DESIGN.md` (shared tokens, components,
+  tone). Every phase takes screenshots of each screen it touches and checks
+  them against it.
+- **Assets**: free licences only (CC0 first; CC-BY with credit; a VRoid Hub
+  model only if its conditions allow redistribution and modification in a
+  public repo). Log each one in `docs/ASSETS.md`. Never commit Mixamo files.
+- If usage limits stop you, commit, push, and report `PHASE <N> CONTINUE`.
