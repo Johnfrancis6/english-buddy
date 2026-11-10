@@ -1,5 +1,6 @@
 import type { Debrief } from '../analysis/types';
 import type { Turn } from '../talk/transcript';
+import { run } from './db';
 
 /**
  * Finished conversations, as text only, in this browser's IndexedDB. Nothing
@@ -17,41 +18,20 @@ export interface SavedTalk {
   debrief: Debrief | null;
   /** Explanations already fetched, by mistake index. */
   why: Record<number, string>;
+  /**
+   * Time the learner's microphone heard voice, in ms (phase 3+). Older talks
+   * have none: the dashboard estimates it from their word count.
+   */
+  speakingMs?: number;
+  /** Talks pulled from the account have no transcript, only these counts. */
+  cloudCounts?: { words: number; sentences: number };
 }
 
-const DB = 'english-buddy';
-const STORE = 'talks';
-/** Older talks are dropped beyond this many. */
-export const KEEP_TALKS = 30;
-
-function open(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: 'id' });
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function run<T>(
-  mode: IDBTransactionMode,
-  fn: (s: IDBObjectStore) => IDBRequest<T> | void,
-): Promise<T | undefined> {
-  const db = await open();
-  try {
-    return await new Promise<T | undefined>((resolve, reject) => {
-      const tx = db.transaction(STORE, mode);
-      const req = fn(tx.objectStore(STORE));
-      tx.oncomplete = () => resolve(req ? req.result : undefined);
-      tx.onerror = () => reject(tx.error);
-    });
-  } finally {
-    db.close();
-  }
-}
+/** Older talks are dropped beyond this many (text only, ~10–50 kB each). */
+export const KEEP_TALKS = 300;
 
 export async function listTalks(): Promise<SavedTalk[]> {
-  const all = (await run<SavedTalk[]>('readonly', (s) => s.getAll())) ?? [];
+  const all = (await run<SavedTalk[]>('talks', 'readonly', (s) => s.getAll())) ?? [];
   return all.map(upgradeTalk).sort((a, b) => b.startedAt - a.startedAt);
 }
 
@@ -76,11 +56,15 @@ export function upgradeTalk(t: SavedTalk): SavedTalk {
 }
 
 export async function saveTalk(talk: SavedTalk): Promise<void> {
-  await run('readwrite', (s) => s.put(structuredClone(talk)));
+  await run('talks', 'readwrite', (s) => s.put(structuredClone(talk)));
   const all = await listTalks();
-  for (const old of all.slice(KEEP_TALKS)) await run('readwrite', (s) => s.delete(old.id));
+  for (const old of all.slice(KEEP_TALKS)) await run('talks', 'readwrite', (s) => s.delete(old.id));
+}
+
+export async function deleteTalk(id: string): Promise<void> {
+  await run('talks', 'readwrite', (s) => s.delete(id));
 }
 
 export async function clearTalks(): Promise<void> {
-  await run('readwrite', (s) => s.clear());
+  await run('talks', 'readwrite', (s) => s.clear());
 }

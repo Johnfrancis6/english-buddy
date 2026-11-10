@@ -1,3 +1,4 @@
+import { SCALE_TEXT } from '../progress/level';
 import { MISTAKE_TYPES, type AnalysisContext, type AnalysisTurn, type Mistake } from './types';
 
 /** The conversation as plain lines; learner turns carry their id. */
@@ -31,11 +32,19 @@ Find the learner's real mistakes in their own lines (never in ${ctx.characterNam
 - "recast_by_character" is true when ${ctx.characterName}'s next line reuses the correct form.
 - "explanation_fr": one or two short sentences in simple French, the rule and, when relevant, the French habit behind the mistake.
 
-Also give: a short honest and encouraging summary in French; up to three real strengths; up to five useful words or expressions from the talk (or that the learner was missing) with the French translation and a short English example; and the one thing to work on next time. If there are no mistakes, say so; never invent one.`;
+Also give: a short honest and encouraging summary in French; up to three real strengths; up to five useful words or expressions from the talk (or that the learner was missing) with the French translation and a short English example; and the one thing to work on next time. If there are no mistakes, say so; never invent one.
+
+Skill scores: estimate fluency, grammar, vocabulary and listening from this transcript only, on the scale ${SCALE_TEXT} Be honest and consistent: a talk with several basic tense mistakes is not B2 in grammar. Judge fluency from the length and flow of the learner's turns (recognition removes hesitation sounds, so do not over-reward short, clean turns). If a skill cannot be judged (very short talk), give your best cautious estimate around the learner's current level.
+
+Memory: ${ctx.characterName} will remember the learner in the next talks. In "memory_facts", write the lasting facts the learner said about their own life (job or studies, family and close people, plans and upcoming events with their date if given, tastes and hobbies, daily life), each as one short French sentence in the third person ("Travaille comme…", "A un entretien d'embauche vendredi."). Only facts the learner clearly said about themselves, never guesses, never facts about ${ctx.characterName}, nothing sensitive (health, religion, politics, money details) unless the learner insisted on it. Do not repeat a known fact; if a known fact changed or became more precise, give the new sentence with "replaces" set to its id. Leave the list empty if nothing new was said.
+Known facts:
+${ctx.knownFacts ?? '(nothing yet)'}
+
+In "talk_memory_fr", one or two French sentences on what you talked about and anything worth asking about next time (from ${ctx.characterName}'s point of view, third person for the learner).`;
 }
 
-export function explainSystemPrompt(): string {
-  return `Tu es un professeur d'anglais bienveillant pour francophones. Tu expliques une erreur précise d'un apprenant (niveau B1 environ) en français simple, en le tutoyant.
+export function explainSystemPrompt(level = 'B1'): string {
+  return `Tu es un professeur d'anglais bienveillant pour francophones. Tu expliques une erreur précise d'un apprenant (niveau ${level} environ) en français simple, en le tutoyant.
 
 Structure, en texte simple sans titres ni Markdown, environ 120 à 180 mots :
 1. La règle en une ou deux phrases claires.

@@ -25,8 +25,14 @@ export interface Character {
 export interface LearnerProfile {
   /** CEFR band, shown as an estimate. */
   level: 'A2' | 'B1' | 'B2' | 'C1';
+  /** The level comes from the learner's own talks (false: the B1 starting guess). */
+  levelMeasured?: boolean;
   nativeLanguage: string;
   goals: string[];
+  /** Their most frequent recent mistakes, with the latest example (phase 3). */
+  recentMistakes?: { type: string; said: string; correct: string; count: number }[];
+  /** The character's memory block (memory/facts.ts), '' when nothing is known. */
+  memory?: string;
 }
 
 export const DEFAULT_LEARNER: LearnerProfile = {
@@ -162,21 +168,51 @@ export function conversationPolicy(name: string): string {
 /** Kept for phase 1 callers and tests: Jake's policy. */
 export const CONVERSATION_POLICY = conversationPolicy(JAKE.name);
 
+/** English names of the mistake types, for the character's prompt. */
+export const MISTAKE_NAMES_EN: Record<string, string> = {
+  verb_tense: 'verb tenses',
+  verb_form: 'verb forms',
+  agreement: 'agreement',
+  articles: 'articles',
+  prepositions: 'prepositions',
+  word_order: 'word order',
+  false_friend: 'French words and structures (false friends)',
+  vocabulary: 'word choice',
+  register: 'register',
+};
+
+function mistakesBlock(learner: LearnerProfile): string {
+  const list = learner.recentMistakes ?? [];
+  if (!list.length) return '';
+  return [
+    'Their most frequent mistakes lately (from their debriefs):',
+    ...list.map(
+      (m) => `- ${MISTAKE_NAMES_EN[m.type] ?? m.type}, e.g. "${m.said}" instead of "${m.correct}"`,
+    ),
+    'When they make one of these, it is the one to recast first. Now and then, ask a question that naturally invites the structure (for example a question about last weekend for past tenses). Never mention these mistakes to them.',
+  ].join('\n');
+}
+
 export function buildSystemPrompt(
   character: Character = JAKE,
   learner: LearnerProfile = DEFAULT_LEARNER,
   scene: SceneId = 'cafe',
 ): string {
+  const level = `at about ${learner.level} level (${learner.levelMeasured ? 'estimated from their recent talks' : 'a first estimate'})`;
   const about =
     character.id === 'lily'
-      ? `About the grown-up: they are a native ${learner.nativeLanguage} speaker learning English, at about ${learner.level} level (an estimate).`
-      : `About the learner: they are a native ${learner.nativeLanguage} speaker learning English, at about ${learner.level} level (an estimate). They want to ${learner.goals.join(', and ')}.`;
+      ? `About the grown-up: they are a native ${learner.nativeLanguage} speaker learning English, ${level}.`
+      : `About the learner: they are a native ${learner.nativeLanguage} speaker learning English, ${level}. They want to ${learner.goals.join(', and ')}.`;
   return [
     character.persona,
     character.voiceStyle,
     `Scene: ${character.scenes[scene]}`,
     `${about} ${levelGuide[learner.level]}`,
+    mistakesBlock(learner),
+    learner.memory ?? '',
     conversationPolicy(character.name),
     CORRECTION_POLICY,
-  ].join('\n\n');
+  ]
+    .filter(Boolean)
+    .join('\n\n');
 }

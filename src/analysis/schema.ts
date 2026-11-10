@@ -1,14 +1,26 @@
+import { LEARNER_CATEGORIES, type FactUpdate } from '../memory/facts';
+import { SCALE_TEXT } from '../progress/level';
 import {
   MISTAKE_TYPES,
+  type SkillScores,
   type Debrief,
   type Mistake,
   type MistakeType,
   type VocabItem,
 } from './types';
 
+const score = (what: string) => ({
+  type: 'integer',
+  minimum: 0,
+  maximum: 100,
+  description: `${what} Scale: ${SCALE_TEXT}`,
+});
+
 /**
  * JSON Schema sent as `responseJsonSchema`. Only keywords listed as supported
- * in the Gemini structured-output docs (checked 2026-11-10) are used.
+ * in the Gemini structured-output docs are used (checked again 2026-11-10:
+ * minimum/maximum, enum, minItems/maxItems are enforced; string lengths are
+ * not, so they are re-checked in code).
  */
 export const DEBRIEF_SCHEMA = {
   type: 'object',
@@ -61,8 +73,56 @@ export const DEBRIEF_SCHEMA = {
       type: 'string',
       description: 'The single most useful thing to work on next time, in French.',
     },
+    skill_scores: {
+      type: 'object',
+      description: 'Estimates from this transcript only.',
+      properties: {
+        fluency: score('Fluency: length and flow of turns, hesitations, ability to keep talking.'),
+        grammar: score('Grammar: accuracy and range of structures.'),
+        vocabulary: score('Vocabulary: range and precision of words and expressions.'),
+        listening: score(
+          'Listening: did the learner understand the character (relevant answers, few requests to repeat)?',
+        ),
+      },
+      required: ['fluency', 'grammar', 'vocabulary', 'listening'],
+    },
+    memory_facts: {
+      type: 'array',
+      maxItems: 8,
+      description:
+        'Lasting facts the learner told about their own life, new or changed since the known facts.',
+      items: {
+        type: 'object',
+        properties: {
+          category: { type: 'string', enum: [...LEARNER_CATEGORIES] },
+          fact_fr: {
+            type: 'string',
+            description: 'One short sentence in French, in the third person.',
+          },
+          replaces: {
+            type: 'string',
+            description: 'Id of the known fact this one updates, or an empty string.',
+          },
+        },
+        required: ['category', 'fact_fr', 'replaces'],
+      },
+    },
+    talk_memory_fr: {
+      type: 'string',
+      description:
+        'One or two sentences in French: what the talk was about and anything to follow up next time.',
+    },
   },
-  required: ['summary_fr', 'strengths_fr', 'mistakes', 'vocabulary', 'next_focus_fr'],
+  required: [
+    'summary_fr',
+    'strengths_fr',
+    'mistakes',
+    'vocabulary',
+    'next_focus_fr',
+    'skill_scores',
+    'memory_facts',
+    'talk_memory_fr',
+  ],
 } as const;
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -108,6 +168,9 @@ export function parseDebrief(
     .filter((v) => v.english && v.french)
     .slice(0, 5);
   return {
+    skills: parseSkills(j.skill_scores),
+    memory: parseMemory(j.memory_facts),
+    talkMemoryFr: str(j.talk_memory_fr).slice(0, 400),
     summaryFr: str(j.summary_fr),
     strengthsFr: arr(j.strengths_fr).map(str).filter(Boolean).slice(0, 3),
     mistakes,
@@ -115,6 +178,34 @@ export function parseDebrief(
     nextFocusFr: str(j.next_focus_fr),
     model,
   };
+}
+
+function parseSkills(v: unknown): SkillScores | null {
+  const o = obj(v);
+  const keys = ['fluency', 'grammar', 'vocabulary', 'listening'] as const;
+  if (!keys.every((k) => typeof o[k] === 'number' && Number.isFinite(o[k]))) return null;
+  const clamp = (n: unknown) => Math.max(0, Math.min(100, Math.round(n as number)));
+  return {
+    fluency: clamp(o.fluency),
+    grammar: clamp(o.grammar),
+    vocabulary: clamp(o.vocabulary),
+    listening: clamp(o.listening),
+  };
+}
+
+function parseMemory(v: unknown): FactUpdate[] {
+  const cats: readonly string[] = LEARNER_CATEGORIES;
+  return arr(v)
+    .map(obj)
+    .map((f) => ({
+      category: (cats.includes(str(f.category))
+        ? str(f.category)
+        : 'life') as FactUpdate['category'],
+      text: str(f.fact_fr).slice(0, 200),
+      replaces: str(f.replaces),
+    }))
+    .filter((f) => f.text)
+    .slice(0, 8);
 }
 
 /** Some models wrap JSON in ```json fences even in JSON mode. */

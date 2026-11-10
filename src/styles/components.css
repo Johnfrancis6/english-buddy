@@ -168,7 +168,8 @@ label.check {
   font-weight: 500;
 }
 input,
-select {
+select,
+textarea {
   width: 100%;
   font: inherit;
   font-size: var(--text-sm);
@@ -273,4 +274,13 @@ label.check input {
     transition: none !important;
     animation: none !important;
   }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

@@ -1,5 +1,12 @@
 import { groupByType } from '../analysis/schema';
-import { MISTAKE_TYPES, type Debrief, type Mistake } from '../analysis/types';
+import {
+  MISTAKE_TYPES,
+  SKILLS,
+  type Debrief,
+  type Mistake,
+  type SkillScores,
+} from '../analysis/types';
+import { bandOf } from '../progress/level';
 import { el } from './dom';
 
 export interface DebriefHandlers {
@@ -9,6 +16,8 @@ export interface DebriefHandlers {
   known: Record<number, string>;
   /** The character the learner talked with. */
   characterName: string;
+  /** Opens the memory screen (phase 3). */
+  openMemory?: () => void;
 }
 
 /** Renders the French debrief: summary, mistakes by type, vocabulary. */
@@ -57,6 +66,47 @@ export function renderDebrief(root: HTMLElement, d: Debrief, h: DebriefHandlers)
   if (d.nextFocusFr) {
     root.append(el('h3', { text: 'Pour la prochaine fois' }), el('p', { text: d.nextFocusFr }));
   }
+  if (d.skills) root.append(skillsLine(d.skills));
+  if (d.memory?.length || d.talkMemoryFr) root.append(memorySection(d, h));
+}
+
+function skillsLine(k: SkillScores): HTMLElement {
+  const parts = (Object.keys(SKILLS) as (keyof SkillScores)[]).map(
+    (key) => `${SKILLS[key]} ${k[key]}`,
+  );
+  const overall = Math.round((k.fluency + k.grammar + k.vocabulary + k.listening) / 4);
+  return el(
+    'p',
+    { class: 'skills-line muted small' },
+    `Estimation sur cette conversation (sur 100) : ${parts.join(' · ')} — autour de ${bandOf(overall)}. `,
+    'Ton niveau estimé, sur plusieurs conversations, est dans « Mes progrès ».',
+  );
+}
+
+function memorySection(d: Debrief, h: DebriefHandlers): HTMLElement {
+  const section = el(
+    'section',
+    { class: 'memory-note' },
+    el('h3', { text: `Ce que ${h.characterName} retient de toi` }),
+  );
+  if (d.memory?.length) {
+    section.append(el('ul', {}, ...d.memory.map((f) => el('li', { text: f.text }))));
+  }
+  if (d.talkMemoryFr) {
+    section.append(
+      el('p', { class: 'muted small', text: `Pour la prochaine fois : ${d.talkMemoryFr}` }),
+    );
+  }
+  if (h.openMemory) {
+    const b = el('button', {
+      class: 'btn quiet small',
+      type: 'button',
+      text: 'Voir, corriger ou effacer',
+    });
+    b.addEventListener('click', h.openMemory);
+    section.append(b);
+  }
+  return section;
 }
 
 function mistakeCard(index: number, m: Mistake, h: DebriefHandlers): HTMLElement {

@@ -20,7 +20,12 @@ import { friendly, type FriendlyError } from './voice/errors';
 import { GeminiLiveSession } from './voice/geminiLive';
 import { LatencyTracker } from './voice/latency';
 import type { VoiceState } from './voice/types';
-import { buildSystemPrompt, DEFAULT_LEARNER, type SceneId } from './teaching/persona';
+import {
+  buildSystemPrompt,
+  DEFAULT_LEARNER,
+  type LearnerProfile,
+  type SceneId,
+} from './teaching/persona';
 import { CAST, castMember, SCENES, sceneInfo, type CastMember } from './cast';
 import { GestureDirector } from './scene/director';
 import { GESTURES } from './scene/gestures';
@@ -33,6 +38,12 @@ import { GeminiAnalyzer } from './analysis/geminiAnalyzer';
 import type { AnalysisTurn } from './analysis/types';
 import { asProviderError } from './net/providerError';
 import { clearTalks, listTalks, saveTalk, type SavedTalk } from './storage/talks';
+import { clearFacts, deleteFact, listFacts, putFact, saveFacts } from './storage/facts';
+import { factsForAnalyzer, mergeFacts, newFactId, type Fact } from './memory/facts';
+import { buildLearnerProfile } from './progress/profile';
+import { buildProgress } from './progress/stats';
+import { renderMemory } from './ui/memoryView';
+import { renderProgress } from './ui/progressView';
 import { TranscriptView } from './ui/transcriptView';
 import { debriefText, renderDebrief } from './ui/debriefView';
 import { el } from './ui/dom';
@@ -277,6 +288,10 @@ interface Talk {
   clip: ClipRecorder;
   transcribeErrors: number;
   ended: boolean;
+  /** Time the microphone heard the learner's voice (measured, ms). */
+  speakingMs: number;
+  /** What the character was told about the learner at the start. */
+  profile: LearnerProfile;
 }
 let talk: Talk | null = null;
 const transcriptView = new TranscriptView(transcriptBody);
@@ -307,6 +322,7 @@ const voice = new GeminiLiveSession(player, latency, {
   },
   onMicLevel: (rms, voiced) => {
     director?.learnerFrame(stageTime(), voiced);
+    if (voiced && talk && !talk.ended) talk.speakingMs += MIC_CHUNK_MS;
     dMic.style.width = `${Math.min(100, Math.round(rms * 500))}%`;
     dMic.classList.toggle('voiced', voiced);
   },
@@ -337,10 +353,12 @@ async function startTalk(): Promise<void> {
   }
   const character = member.character;
   const voiceName = settings.voiceOverride || member.voice;
+  startBtn.disabled = true; // no second start while the profile is read
+  const profile = await learnerProfile(member.id).finally(() => (startBtn.disabled = false));
   voice.configure({
     ...settings,
     voice: voiceName,
-    systemPrompt: buildSystemPrompt(character, DEFAULT_LEARNER, sceneId),
+    systemPrompt: buildSystemPrompt(character, profile, sceneId),
     greeting: character.greeting,
   });
   director = new GestureDirector({ fistBump: member.fistBump }, (g) => stage.play(g));
@@ -362,10 +380,28 @@ async function startTalk(): Promise<void> {
     clip: new ClipRecorder({ chunkMs: MIC_CHUNK_MS }),
     transcribeErrors: 0,
     ended: false,
+    speakingMs: 0,
+    profile,
   };
   transcriptView.clear();
   renderSourceLabel();
   await voice.start();
+}
+
+/** What the character knows before the talk: level, frequent mistakes, memory. */
+async function learnerProfile(id: CastMember['id']): Promise<LearnerProfile> {
+  try {
+    const [talks, facts] = await Promise.all([listTalks(), listFacts()]);
+    const p = buildLearnerProfile(talks, facts, id, Date.now());
+    const remembered = facts.filter((f) => f.category !== 'last_talk').length;
+    log(
+      `Profil donné au personnage : niveau ${p.level} (${p.levelMeasured ? 'estimé sur tes bilans' : 'estimation de départ'}), ${remembered} souvenir${remembered > 1 ? 's' : ''}, fautes fréquentes : ${p.recentMistakes?.map((m) => m.type).join(', ') || 'aucune'}`,
+    );
+    return p;
+  } catch (err) {
+    log(`Profil non lu (${String(err)}) : niveau B1 par défaut, sans mémoire`);
+    return DEFAULT_LEARNER;
+  }
 }
 
 /**
@@ -474,6 +510,7 @@ async function finishTalk(t: Talk): Promise<void> {
     })),
     debrief: null,
     why: {},
+    speakingMs: Math.round(t.speakingMs),
   };
   await persist(current);
   await runDebrief(current);
@@ -499,14 +536,19 @@ async function runDebrief(s: SavedTalk): Promise<void> {
   $('debrief-retry').hidden = true;
   try {
     const source = s.turns.find((x) => x.who === 'you')?.source ?? 'live';
+    const facts = await listFacts().catch(() => [] as Fact[]);
+    const others = (await listTalks().catch(() => [] as SavedTalk[])).filter((x) => x.id !== s.id);
+    const level = buildLearnerProfile(others, [], who.id, Date.now()).level;
     s.debrief = await analyzer().analyze(analysisTurns(s), {
-      level: DEFAULT_LEARNER.level,
+      level,
       characterName: who.name,
       characterDescription: who.shortDescription,
       transcriptSource: source === 'live' ? 'Gemini Live' : SOURCE_LABEL[source],
+      knownFacts: factsForAnalyzer(facts),
     });
     log(`Bilan prêt (${s.debrief.mistakes.length} fautes, modèle ${s.debrief.model})`);
     await persist(s);
+    await remember(s, facts);
     if (current?.id === s.id) showDebrief(s);
   } catch (err) {
     const e = asProviderError(err, 'gemini');
@@ -514,6 +556,24 @@ async function runDebrief(s: SavedTalk): Promise<void> {
     debriefStatus.className = 'status error-text';
     $('debrief-retry').hidden = false;
     log(`Bilan impossible : ${e.detail}`);
+  }
+}
+
+/** Adds what the debrief learnt about the learner to the characters' memory. */
+async function remember(s: SavedTalk, facts: Fact[]): Promise<void> {
+  const d = s.debrief;
+  if (!d || (!d.memory?.length && !d.talkMemoryFr)) return;
+  try {
+    const merged = mergeFacts(facts, d.memory ?? [], {
+      now: Date.now(),
+      talkId: s.id,
+      character: (s.character ?? 'jake') as CastMember['id'],
+      lastTalk: d.talkMemoryFr,
+    });
+    await saveFacts(merged);
+    log(`Mémoire : ${d.memory?.length ?? 0} fait(s) proposé(s), ${merged.length} en tout`);
+  } catch (err) {
+    log(`Mémoire non enregistrée : ${String(err)}`);
   }
 }
 
@@ -531,6 +591,7 @@ function showDebrief(s: SavedTalk): void {
     renderDebrief(debriefBody, s.debrief, {
       characterName: who.character.name,
       known: s.why,
+      openMemory: () => void openMemory(),
       why: async (index, mistake) => {
         const text = await analyzer()
           .explain(mistake, analysisTurns(s))
@@ -591,6 +652,90 @@ void listTalks()
   .catch(() => {
     /* IndexedDB unavailable (private window): the debrief still shows */
   });
+
+// ------------------------------------------------------- memory + progress
+const memoryDialog = $<HTMLDialogElement>('memory');
+const progressDialog = $<HTMLDialogElement>('progress');
+const memoryStatus = $('memory-status');
+const characterName = (id: string) =>
+  CAST.find((c) => c.id === id)?.character.name ?? 'un personnage';
+
+async function openMemory(): Promise<void> {
+  memoryStatus.textContent = '';
+  try {
+    const facts = await listFacts();
+    renderMemory($('memory-body'), facts, {
+      characterName,
+      save: async (f) => {
+        await putFact(f);
+        memoryStatus.textContent =
+          'Corrigé : les personnages s’en serviront dès la prochaine conversation.';
+      },
+      remove: async (id) => {
+        await deleteFact(id);
+        memoryStatus.textContent = 'Effacé.';
+      },
+      add: async (category, text) => {
+        const now = Date.now();
+        await putFact({
+          id: newFactId(now),
+          category,
+          text,
+          createdAt: now,
+          updatedAt: now,
+          byLearner: true,
+        });
+        await openMemory();
+        memoryStatus.textContent = 'Ajouté.';
+      },
+    });
+  } catch (err) {
+    memoryStatus.textContent =
+      'La mémoire ne peut pas être lue dans ce navigateur (fenêtre privée ?).';
+    log(`Mémoire illisible : ${String(err)}`);
+  }
+  if (!memoryDialog.open) memoryDialog.showModal();
+}
+
+async function openProgress(): Promise<void> {
+  const talks = await listTalks().catch(() => [] as SavedTalk[]);
+  const p = buildProgress(talks, Date.now());
+  $('progress-meta').textContent =
+    `${p.totalTalks} conversation${p.totalTalks > 1 ? 's' : ''} gardée${p.totalTalks > 1 ? 's' : ''} dans ce navigateur`;
+  renderProgress(
+    $('progress-body'),
+    p,
+    talks.map((t) => ({
+      id: t.id,
+      label: `${new Date(t.startedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} · ${characterName(t.character ?? 'jake')} · ${sceneInfo(t.scene ?? 'cafe').labelFr.toLowerCase()} · ${formatDuration(t.durationMs)}`,
+      mistakes: t.debrief ? t.debrief.mistakes.length : null,
+    })),
+    (id) => {
+      const t = talks.find((x) => x.id === id);
+      if (!t) return;
+      progressDialog.close();
+      showDebrief(t);
+      if (!t.debrief) void runDebrief(t);
+    },
+  );
+  if (!progressDialog.open) progressDialog.showModal();
+}
+
+$('open-memory').addEventListener('click', () => void openMemory());
+$('open-progress').addEventListener('click', () => void openProgress());
+$('progress-memory').addEventListener('click', () => {
+  progressDialog.close();
+  void openMemory();
+});
+$('memory-close').addEventListener('click', () => memoryDialog.close());
+$('progress-close').addEventListener('click', () => progressDialog.close());
+$('memory-clear').addEventListener('click', () => {
+  if (!confirm('Effacer tout ce que les personnages savent de toi ?')) return;
+  void clearFacts().then(
+    () => openMemory().then(() => (memoryStatus.textContent = 'Tout est effacé.')),
+    () => (memoryStatus.textContent = 'Effacement impossible.'),
+  );
+});
 
 // ---------------------------------------------------------------- lip sync
 const analyser = voice.outputAnalyser;
@@ -770,7 +915,7 @@ $('copy-report').addEventListener('click', () => {
   const turns: Turn[] = talk?.transcript.turns ?? [];
   const learner = turns.filter((x) => x.who === 'you' && x.text.trim());
   const report = [
-    'English Buddy — rapport de test phase 2',
+    'English Buddy — rapport de test phase 3',
     `Date : ${new Date().toLocaleString('fr-FR')}`,
     `Conversation lancée avec : ${sessionLabel}`,
     `État : ${dState.textContent}`,
@@ -782,6 +927,7 @@ $('copy-report').addEventListener('click', () => {
     `Tours : ${learner.length} de toi, ${turns.filter((x) => x.who === 'buddy').length} du personnage ; interruptions du personnage : ${turns.filter((x) => x.interrupted).length}`,
     `Transcription : ${talk ? SOURCE_LABEL[talk.source] : '—'} ; échecs du 2ᵉ reconnaisseur : ${talk?.transcribeErrors ?? 0}`,
     `Bilan : ${current?.debrief ? `${current.debrief.mistakes.length} fautes, modèle ${current.debrief.model}` : 'aucun'}`,
+    `Profil donné : niveau ${talk?.profile.level ?? '—'}${talk?.profile.levelMeasured ? ' (estimé)' : ''}, mémoire ${talk?.profile.memory ? 'oui' : 'vide'} ; temps de parole mesuré : ${talk ? formatDuration(talk.speakingMs) : '—'}`,
     `Navigateur : ${navigator.userAgent}`,
     '--- Journal ---',
     ...logLines,

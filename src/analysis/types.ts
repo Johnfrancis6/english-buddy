@@ -1,3 +1,5 @@
+import type { FactUpdate } from '../memory/facts';
+
 /** Mistake taxonomy (docs/BRIEF.md §5), with the French label shown. */
 export const MISTAKE_TYPES = {
   verb_tense: 'Temps du verbe',
@@ -32,6 +34,20 @@ export interface VocabItem {
   example: string;
 }
 
+/** Sub-scores, 0–100 on a scale anchored on CEFR bands (see SKILL_BANDS). */
+export interface SkillScores {
+  fluency: number;
+  grammar: number;
+  vocabulary: number;
+  listening: number;
+}
+export const SKILLS = {
+  fluency: 'Aisance',
+  grammar: 'Grammaire',
+  vocabulary: 'Vocabulaire',
+  listening: 'Compréhension',
+} as const satisfies Record<keyof SkillScores, string>;
+
 export interface Debrief {
   summaryFr: string;
   strengthsFr: string[];
@@ -41,6 +57,12 @@ export interface Debrief {
   nextFocusFr: string;
   /** Model that produced it, for the report. */
   model: string;
+  /** Phase 3+: one estimate per skill for this talk (null if the model gave none). */
+  skills?: SkillScores | null;
+  /** Phase 3+: new or changed facts about the learner. */
+  memory?: FactUpdate[];
+  /** Phase 3+: what the talk was about, for the character's memory (French). */
+  talkMemoryFr?: string;
 }
 
 /** One line of the conversation as given to the analyzer. */
@@ -58,6 +80,8 @@ export interface AnalysisContext {
   characterDescription?: string;
   /** Where the learner's text comes from, so recognition errors are expected. */
   transcriptSource: string;
+  /** What is already known about the learner, with ids (memory/facts.ts). */
+  knownFacts?: string;
 }
 
 /**

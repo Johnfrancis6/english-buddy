@@ -10,9 +10,11 @@
     <canvas id="stage" data-ready="false" role="img" aria-label="Scène 3D"></canvas>
 
     <header class="topbar">
-      <div class="brand">English Buddy <span class="chip">phase 2 · test</span></div>
+      <div class="brand">English Buddy <span class="chip">phase 3 · test</span></div>
       <div class="row tight">
         <button id="open-home" class="btn" type="button" hidden>Changer de scène</button>
+        <button id="open-progress" class="btn" type="button">Mes progrès</button>
+        <button id="open-memory" class="btn" type="button">Ce qu’ils savent de moi</button>
         <a class="btn" href="./lab.html">Labo transcription</a>
         <button id="open-settings" class="btn" type="button">Réglages</button>
       </div>
@@ -124,6 +126,35 @@
         <button id="debrief-close" class="btn primary" type="button">Fermer</button>
         <button id="debrief-retry" class="btn" type="button" hidden>Réessayer le bilan</button>
         <button id="debrief-copy" class="btn" type="button">Copier le bilan</button>
+      </div>
+    </dialog>
+
+    <dialog id="memory" class="panel dialog memory" aria-labelledby="memory-title">
+      <div class="dialog-head">
+        <h2 id="memory-title">Ce que les personnages savent de toi</h2>
+      </div>
+      <p class="muted small">
+        Après chaque conversation, le bilan note ce que tu racontes sur ta vie (travail, famille,
+        projets, goûts) et ce dont vous avez parlé. Les personnages s’en souviennent et en reparlent
+        naturellement. Tout reste dans ce navigateur, en texte. Corrige ou efface ce que tu veux.
+      </p>
+      <p id="memory-status" class="status" aria-live="polite"></p>
+      <div id="memory-body"></div>
+      <div class="row">
+        <button id="memory-close" class="btn primary" type="button">Fermer</button>
+        <button id="memory-clear" class="link danger" type="button">Tout effacer</button>
+      </div>
+    </dialog>
+
+    <dialog id="progress" class="panel dialog progress" aria-labelledby="progress-title">
+      <div class="dialog-head">
+        <h2 id="progress-title">Mes progrès</h2>
+        <span id="progress-meta" class="muted small"></span>
+      </div>
+      <div id="progress-body"></div>
+      <div class="row">
+        <button id="progress-close" class="btn primary" type="button">Fermer</button>
+        <button id="progress-memory" class="btn" type="button">Ce qu’ils savent de moi</button>
       </div>
     </dialog>
 
