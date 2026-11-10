@@ -16,8 +16,9 @@ Dernière mise à jour : 2026-11-09 (fin de la construction de la phase 0).
 
 ## Ce que Franco doit faire maintenant
 
-- [ ] Dire s'il veut la pull request `phase-0` → `main` maintenant (elle
-      sera à fusionner par lui).
+- [ ] Fusionner la pull request
+      <https://github.com/Johnfrancis6/english-buddy/pull/1> (`phase-0` →
+      `main`) : bouton vert **Merge pull request**, puis **Confirm merge**.
 - [ ] Ouvrir une nouvelle session pour la phase 1 (voir « Prochaine
       session »).
 
