@@ -185,10 +185,15 @@ describe('settings', () => {
   });
   it('falls back to defaults on unknown or corrupt values', () => {
     const store = memory();
-    saveSettings({ apiKey: 'k', model: 'old-model', voice: 'Nobody' }, store);
+    saveSettings({ apiKey: 'k', model: 'old-model', voice: 'Nobody', pauseMs: 123 }, store);
     expect(loadSettings(store)).toEqual({ ...DEFAULTS, apiKey: 'k' });
     store.setItem('english-buddy.settings.v1', '{broken');
     expect(loadSettings(store)).toEqual(DEFAULTS);
+  });
+  it('remembers the chosen speaking pace', () => {
+    const store = memory();
+    saveSettings({ ...DEFAULTS, pauseMs: 1500 }, store);
+    expect(loadSettings(store).pauseMs).toBe(1500);
   });
   it('masks the key', () => {
     expect(maskKey('AIzaSyD-1234567890abcd')).toBe('AIza…abcd');

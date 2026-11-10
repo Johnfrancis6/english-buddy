@@ -88,6 +88,18 @@ artificiel (pas une vraie voix), avec 1 seconde de silence au milieu.
 - [ ] Les phrases s'affichent à droite (« Toi : … », « Jake : … »). Elles ne
       sont pas enregistrées.
 
+## Test 4 bis — Ton rythme de parole
+
+Dans **Réglages**, la liste **Ton rythme de parole** règle combien de temps
+Jake attend ton silence avant de répondre (0,5 s, 0,9 s ou 1,5 s). Arrête la
+conversation, change le réglage, redémarre, puis fais exprès une pause au
+milieu d'une phrase (« Yesterday I went to… [pause] …the market »).
+
+- [ ] En « Rapide », Jake te coupe-t-il pendant la pause ?
+- [ ] En « Posé » ou « Je prends mon temps », te laisse-t-il finir ?
+- [ ] Note le délai médian avec le réglage que tu préfères (il augmente
+      d'autant que la pause choisie : c'est normal).
+
 ## Test 5 — Couper la parole
 
 Pose une question qui demande une longue réponse (« Tell me about your

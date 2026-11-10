@@ -1,7 +1,7 @@
 import './style.css';
 import { Stage } from './scene/stage';
 import { bandEnergies, computeVisemes, SILENT, smoothVisemes } from './lipsync/visemes';
-import { DEFAULTS, loadSettings, maskKey, MODELS, saveSettings, VOICES } from './settings';
+import { DEFAULTS, loadSettings, maskKey, MODELS, PAUSES, saveSettings, VOICES } from './settings';
 import { PcmPlayer } from './voice/audio';
 import { friendly, type FriendlyError } from './voice/errors';
 import { GeminiLiveSession } from './voice/geminiLive';
@@ -29,6 +29,7 @@ const settingsDialog = $<HTMLDialogElement>('settings');
 const keyInput = $<HTMLInputElement>('api-key');
 const modelSelect = $<HTMLSelectElement>('model');
 const voiceSelect = $<HTMLSelectElement>('voice');
+const pauseSelect = $<HTMLSelectElement>('pause');
 const keyStatus = $('key-status');
 
 const STATE_LABELS: Record<VoiceState, string> = {
@@ -92,7 +93,7 @@ async function startTalk(): Promise<void> {
   hideError();
   settings = loadSettings();
   voice.configure(settings);
-  dModel.textContent = `${settings.model} · voix ${settings.voice}`;
+  dModel.textContent = `${settings.model} · voix ${settings.voice} · pause ${settings.pauseMs} ms`;
   transcriptEl.replaceChildren();
   await voice.start();
 }
@@ -226,12 +227,14 @@ $('error-close').addEventListener('click', hideError);
 // ---------------------------------------------------------------- settings
 for (const m of MODELS) modelSelect.add(new Option(m.label, m.id));
 for (const v of VOICES) voiceSelect.add(new Option(v, v));
+for (const x of PAUSES) pauseSelect.add(new Option(x.label, String(x.ms)));
 
 function openSettings(): void {
   settings = loadSettings();
   keyInput.value = settings.apiKey;
   modelSelect.value = settings.model;
   voiceSelect.value = settings.voice;
+  pauseSelect.value = String(settings.pauseMs);
   keyStatus.textContent = settings.apiKey
     ? `Clé enregistrée dans ce navigateur : ${maskKey(settings.apiKey)}`
     : 'Aucune clé enregistrée pour l’instant.';
@@ -250,6 +253,7 @@ settingsDialog.addEventListener('close', () => {
     apiKey: keyInput.value,
     model: modelSelect.value || DEFAULTS.model,
     voice: voiceSelect.value || DEFAULTS.voice,
+    pauseMs: Number(pauseSelect.value) || DEFAULTS.pauseMs,
   });
   settings = loadSettings();
   log(
@@ -274,7 +278,7 @@ $('copy-report').addEventListener('click', () => {
   const report = [
     'English Buddy — rapport de test phase 0',
     `Date : ${new Date().toLocaleString('fr-FR')}`,
-    `Modèle : ${settings.model} · voix ${settings.voice}`,
+    `Modèle : ${settings.model} · voix ${settings.voice} · pause ${settings.pauseMs} ms`,
     `État : ${dState.textContent}`,
     `Délai médian : ${dMedian.textContent} ${dCount.textContent}`,
     `Dernier délai : ${dLast.textContent}`,

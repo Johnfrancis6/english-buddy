@@ -71,7 +71,8 @@ Ce qui est faible :
 | Date | Phase | Ce qui a été fait | Note de Franco |
 |---|---|---|---|
 | 2026-11-09 | Cadrage | Brief, décisions, état | — |
-| 2026-11-09 | Phase 0 | Squelette Vite/TS, personnage VRM (regard, clignement, repos), voix Gemini Live avec clé du navigateur, lèvres synchronisées, mesure du délai, messages d'erreur, déploiement Pages, guide de test. Conversation réelle non testée (pas de clé en session) | En attente |
+| 2026-11-09 | Phase 0 | Squelette Vite/TS, personnage VRM (regard, clignement, repos), voix Gemini Live avec clé du navigateur, lèvres synchronisées, mesure du délai, messages d'erreur, déploiement Pages, guide de test. Conversation réelle non testée (pas de clé en session) | Déploiement vert, « l'essai marche » (2026-11-10). Mesures détaillées à rapporter |
+| 2026-11-10 | Phase 0 (retouche) | Réglage « Ton rythme de parole » : silence de fin de tour au choix (0,5 / 0,9 / 1,5 s) | En attente |
 
 ## Points ouverts
 
@@ -87,3 +88,7 @@ Ce qui est faible :
   à revoir quand `main` servira de version stable (phase 8).
 - Poids du modèle 3D (18 Mo) : à réduire quand Franco exportera ses propres
   personnages.
+- Détection « intelligente » des phrases inachevées (distinguer une
+  hésitation d'une fin de phrase) : l'API Gemini ne propose qu'une durée de
+  silence. Une vraie détection demanderait notre propre détecteur dans le
+  navigateur ; à décider après le retour de Franco sur le réglage de rythme.

@@ -10,6 +10,8 @@ export interface GeminiLiveOptions {
   apiKey: string;
   model: string;
   voice: string;
+  /** Silence, in ms, after which the server decides the learner has finished. */
+  pauseMs: number;
 }
 
 const OUTPUT_RATE = 24_000;
@@ -147,9 +149,11 @@ export class GeminiLiveSession implements VoiceSession {
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voice } } },
         inputAudioTranscription: {},
         outputAudioTranscription: {},
-        // Server-side voice activity detection; 500 ms of silence ends a turn
-        // (docs recommend 500–800 ms, server default ≈ 800 ms).
-        realtimeInputConfig: { automaticActivityDetection: { silenceDurationMs: 500 } },
+        // Server-side voice activity detection. The learner chooses how much
+        // silence ends their turn (docs recommend 500–800 ms, default ≈ 800 ms).
+        realtimeInputConfig: {
+          automaticActivityDetection: { silenceDurationMs: opts.pauseMs },
+        },
         // Lets a talk run past the 15-minute audio session limit.
         contextWindowCompression: { slidingWindow: {} },
         // Lets us survive the ~10-minute connection lifetime.

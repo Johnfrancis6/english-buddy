@@ -10,14 +10,31 @@ export const MODELS = [
 
 export const VOICES = ['Puck', 'Charon', 'Fenrir', 'Orus', 'Kore', 'Aoede'] as const;
 
+/**
+ * How long the learner may stay silent before Jake takes his turn. A longer
+ * pause leaves time to search for a word, and adds the same time to the delay
+ * before every answer.
+ */
+export const PAUSES = [
+  { ms: 500, label: 'Rapide — Jake répond après 0,5 s de silence' },
+  { ms: 900, label: 'Posé — 0,9 s de silence' },
+  { ms: 1500, label: 'Je prends mon temps — 1,5 s de silence' },
+] as const;
+
 export interface Settings {
   apiKey: string;
   model: string;
   voice: string;
+  pauseMs: number;
 }
 
 const KEY = 'english-buddy.settings.v1';
-export const DEFAULTS: Settings = { apiKey: '', model: MODELS[0].id, voice: VOICES[0] };
+export const DEFAULTS: Settings = {
+  apiKey: '',
+  model: MODELS[0].id,
+  voice: VOICES[0],
+  pauseMs: PAUSES[0].ms,
+};
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -32,6 +49,7 @@ export function loadSettings(store: Store = localStorage): Settings {
       voice: (VOICES as readonly string[]).includes(p.voice ?? '')
         ? (p.voice as string)
         : DEFAULTS.voice,
+      pauseMs: PAUSES.some((x) => x.ms === p.pauseMs) ? (p.pauseMs as number) : DEFAULTS.pauseMs,
     };
   } catch {
     return { ...DEFAULTS };
