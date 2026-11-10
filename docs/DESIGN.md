@@ -27,7 +27,7 @@ WCAG formula on 2026-11-10.
 | `--accent` | `#b34a17` | Primary buttons, links, the selected card | white text 5.4 |
 | `--accent-soft` | `rgba(179, 74, 23, 0.12)` | Selected card background, focus halo | — |
 | `--success` | `#2e7d32` | Correct form, "kept", delay on target | 5.1 on white |
-| `--success-soft` | `rgba(46, 125, 50, 0.12)` | Background of success chips ("réussie ✓", challenge over) | `--success` text on it ≥ 4.5 |
+| `--success-soft` | `rgba(46, 125, 50, 0.12)` | Background of success chips ("réussie ✓", challenge over, "dans tes révisions ✓"); `.ok-text` = `--success` text, 600, for "Clé acceptée ✓" | `--success` text on it ≥ 4.5 |
 | `--danger` | `#a32d1c` | Errors, the learner's wrong form, destructive links | 6.9 |
 | `--info` | `#2f5d8a` | The learner's name in transcripts, "Pourquoi ?" box tint | 6.6 |
 | `--heat-1` … `--heat-4` | `#f3dccf`, `#e4b49c`, `#c67751`, `#b34a17` | Sequential steps of the accent for counts (progress table). The number is always written in the cell | `--ink` on 1–3 (≥ 4.7), white on 4 (5.4) |
@@ -162,6 +162,9 @@ default**. They stay reachable in one click and never distract a learner.
 | Goals panel (phase 4) | `index.html` `#goals` | Left column under the folded measures, never over the face: title, timer chip (challenge only), mission goal, "Tu avais dit « … »" items (wrong form in `--danger`, never the answer), expressions with ○/✓ and a hidden word for screen readers, today's speaking time |
 | Reviews ("Révisions à voix haute") | `index.html` `#reviews` | One card at a time; "Voir la réponse" is the primary action; four grade buttons (secondary, small); "Retirer cette carte" danger link; "Fermer" secondary |
 | Mission map | `index.html` `#map` | Three columns (places) × three rows (levels) of `.card.mission`; locked cards are disabled, on `--bg`, and say what opens them in text; "Fermer" primary |
+| Welcome (phase 5) | `index.html` `#welcome` | One step at a time in a dialog (600 px): a thin progress bar of six segments (accent = done/current), title + "Étape N sur 6" chip, short text, exact clicks as a numbered list (button names in bold, in English as on the site), privacy box (`.note.privacy`), one primary action ("C’est parti", "Suivant", "Passer cette étape", "Commencer avec …"), "Retour" secondary, "Plus tard" link. Levels as `.card.level` (2 columns, 1 below 560 px) |
+| Documents (phase 5) | `index.html` `#documents` | Two views in one dialog (680 px). List: intro, "Importer un PDF" (secondary), link field + "Ouvrir le lien", status line (`aria-live`, errors in `--danger`), documents as rows on `--surface-raised`. Reader: "← Mes documents" link, title, passage chip with previous/next (quiet small), the passage (`lang="en"`, scrolls, 1.6 line height), hard words rows with "Ajouter aux révisions" or a green "dans tes révisions ✓" chip, "Ajouter un mot moi-même" folded; "Étudier ce passage avec …" is the primary action |
+| Goals panel → document (phase 5) | `#goals` `[data-mode="document"]` | Title "Étude d’un document", document title, passage number and a one-line how-to, the passage folded, the hard words |
 | Debrief → plan (phase 4) | `#debrief` `.plan-result` | After the summary: mission (left border `--success` / `--danger` + the words "réussie" / "pas encore réussie"), expressions placed, old mistakes reviewed |
 
 ### Charts (phase 3)

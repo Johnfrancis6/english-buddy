@@ -14,6 +14,7 @@
       <div class="row tight">
         <button id="open-home" class="btn" type="button" hidden>Changer de scène</button>
         <button id="open-map" class="btn" type="button">Missions</button>
+        <button id="open-documents" class="btn" type="button">Documents</button>
         <button id="open-progress" class="btn" type="button">Mes progrès</button>
         <button id="open-memory" class="btn" type="button">Ce qu’ils savent de moi</button>
         <a class="btn" href="./lab.html">Labo transcription</a>
@@ -213,6 +214,15 @@
         <button id="map-close" class="btn primary" type="button">Fermer</button>
         <button id="map-free" class="btn" type="button">Parler librement, sans mission</button>
       </div>
+    </dialog>
+
+    <dialog id="documents" class="panel dialog documents" aria-labelledby="documents-title">
+      <div class="dialog-head">
+        <h2 id="documents-title" tabindex="-1">Étudier un document</h2>
+        <span id="documents-meta" class="muted small"></span>
+      </div>
+      <div id="documents-body"></div>
+      <div id="documents-actions" class="row"></div>
     </dialog>
 
     <dialog id="welcome" class="panel dialog welcome" aria-labelledby="welcome-title"></dialog>

@@ -55,5 +55,16 @@ animation file is used.
 | `@google/genai` | Apache-2.0 |
 | `ts-fsrs` 6.0.0 (phase 4, spaced repetition) | MIT |
 | `@open-spaced-repetition/srs-kit` 1.0.0 (dependency of `ts-fsrs`) | BSD-3-Clause |
+| `pdfjs-dist` 6.5.438 (phase 5, PDF text in the browser; Mozilla PDF.js) | Apache-2.0 |
+
+`pdfjs-dist`: version 6.5.438 is the latest on npm (published 2026-11-01,
+checked 2026-11-10 with `npm view`); its `package.json` and `LICENSE` say
+Apache-2.0. The built site serves its worker (`pdf.worker.min.mjs`, which
+keeps Mozilla's licence header) and a lazily loaded chunk of the library; no
+font, cmap or image from the package is shipped. Apache-2.0 allows use and
+redistribution in a public, free project with the licence notice, which the
+worker file carries.
 
 Phase 4 content (missions, expressions to place) is written for this project.
+Phase 5 texts (welcome, documents) are written for this project; imported
+documents belong to the learner and stay in their browser (never committed).

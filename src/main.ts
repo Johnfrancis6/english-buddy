@@ -53,6 +53,7 @@ import {
   buildChallenge,
   CHALLENGE_MINUTES,
   FREE_PLAN,
+  documentPlan,
   missionPlan,
   planPrompt,
   type TalkPlan,
@@ -76,6 +77,12 @@ import { TranscriptView } from './ui/transcriptView';
 import { debriefText, renderDebrief } from './ui/debriefView';
 import { el } from './ui/dom';
 import { WelcomeView } from './ui/welcomeView';
+import { DocumentsView } from './ui/documentsView';
+import { cleanPdfText, guessTitle, makeDoc, type HardWord, type StudyDoc } from './documents/text';
+import { parseLink, fetchLink } from './documents/web';
+import { findHardWords } from './documents/hardWords';
+import { deleteDoc, listDocs, putDoc } from './storage/docs';
+import { cardId } from './reviews/cards';
 import { loadWelcome, saveWelcome, shouldOpenWelcome, LEVEL_CHOICES } from './onboarding/welcome';
 import { listMicrophones } from './onboarding/micTest';
 
@@ -238,7 +245,7 @@ function renderHome(): void {
         if (sceneId === x.id) return;
         sceneId = x.id;
         member = castMember(x.host);
-        if (planMission()?.scene !== x.id) plan = FREE_PLAN;
+        if (plan.mode === 'mission' && planMission()?.scene !== x.id) plan = FREE_PLAN;
         choose();
       }),
     ),
@@ -277,6 +284,27 @@ function renderHomePlan(): void {
     text: m ? 'Changer' : 'Choisir une mission',
   });
   pickBtn.addEventListener('click', () => void openMap());
+  if (plan.mode === 'document' && plan.document) {
+    const d = plan.document;
+    const drop = el('button', { class: 'link', type: 'button', text: 'Sans document' });
+    drop.addEventListener('click', () => {
+      plan = FREE_PLAN;
+      renderHomePlan();
+    });
+    const other = el('button', { class: 'btn quiet small', type: 'button', text: 'Changer' });
+    other.addEventListener('click', () => void documents.open());
+    box.replaceChildren(
+      el(
+        'p',
+        {},
+        el('span', { class: 'chip', text: `Document · passage ${d.passage + 1} sur ${d.total}` }),
+        ' ',
+        el('strong', { text: d.title }),
+      ),
+      el('div', { class: 'row tight' }, other, drop),
+    );
+    return;
+  }
   if (plan.mode === 'mission' && m) {
     const drop = el('button', { class: 'link', type: 'button', text: 'Sans mission' });
     drop.addEventListener('click', () => {
@@ -1292,6 +1320,127 @@ $('open-welcome').addEventListener('click', () => {
   welcome.open();
 });
 
+// --------------------------------------------------------------- documents
+/** Reads a PDF in this browser; returns the document or a French error. */
+async function docFromPdf(data: ArrayBuffer, name: string, kind: StudyDoc['kind']) {
+  const { extractPdf, PdfError } = await import('./documents/pdf');
+  try {
+    const pdf = await extractPdf(data);
+    const text = cleanPdfText(pdf.pages);
+    return makeDoc(
+      guessTitle(pdf.title, text, name),
+      kind,
+      name,
+      text,
+      pdf.pages.length,
+      Date.now(),
+    );
+  } catch (err) {
+    log(`PDF illisible : ${String(err)}`);
+    if (err instanceof PdfError && err.kind === 'password') {
+      return 'Ce PDF est protégé par un mot de passe : enregistre-le sans protection, puis réessaie.';
+    }
+    return 'Ce fichier n’est pas un PDF lisible. Vérifie qu’il s’ouvre bien sur ton ordinateur.';
+  }
+}
+
+const MAX_PDF_BYTES = 40 * 1024 * 1024;
+
+const documents = new DocumentsView(
+  $<HTMLDialogElement>('documents'),
+  $('documents-body'),
+  $('documents-meta'),
+  $('documents-actions'),
+  {
+    list: listDocs,
+    save: putDoc,
+    remove: deleteDoc,
+    importPdf: async (file) => {
+      if (file.size > MAX_PDF_BYTES) return 'Ce PDF est trop lourd (plus de 40 Mo).';
+      return docFromPdf(await file.arrayBuffer(), file.name, 'pdf');
+    },
+    importLink: async (raw) => {
+      const url = parseLink(raw);
+      if (!url) return 'Cette adresse n’est pas valide. Elle doit commencer par https://';
+      const r = await fetchLink(url);
+      if (r.kind === 'error') {
+        log(`Lien refusé (${url.hostname}) : ${r.detail}`);
+        return r.french;
+      }
+      if (r.kind === 'pdf') return docFromPdf(r.data, r.name, 'web');
+      const text = r.text.trim();
+      if (!text) return 'Aucun texte trouvé sur cette page.';
+      return makeDoc(r.title, 'web', url.href, text, 0, Date.now());
+    },
+    hardWords: async (passage) => {
+      const s = loadSettings();
+      const profile = await learnerProfile(member.id);
+      try {
+        return await findHardWords(
+          s.apiKey,
+          [
+            s.analysisModel,
+            ...ANALYSIS_MODELS.map((m) => m.id).filter((m) => m !== s.analysisModel),
+          ],
+          passage,
+          profile.level,
+        );
+      } catch (err) {
+        const e = asProviderError(err, 'gemini');
+        log(`Mots difficiles : ${e.detail}`);
+        throw new Error(e.french, { cause: err });
+      }
+    },
+    hasKey: () => Boolean(loadSettings().apiKey),
+    knownWords: async () =>
+      new Set((await listCards()).filter((c) => !c.suspended).map((c) => c.id)),
+    wordId: (english) => cardId('word', english),
+    addWord: async (w: HardWord, doc: StudyDoc) => {
+      const cards = await listCards().catch(() => [] as ReviewCard[]);
+      const added = await addDrafts(
+        [
+          {
+            id: cardId('word', w.english),
+            kind: 'word',
+            front: w.french,
+            back: w.english,
+            note: w.example,
+            talkId: `doc:${doc.id}`,
+            createdAt: Date.now(),
+          },
+        ],
+        cards,
+      );
+      log(
+        added
+          ? `Mot ajouté aux révisions : ${w.english}`
+          : `Déjà dans les révisions : ${w.english}`,
+      );
+      void renderToday();
+      return added > 0;
+    },
+    characterName: () => member.character.name,
+    study: (doc, passage) => {
+      if (voice.state !== 'idle' && voice.state !== 'error') return;
+      plan = documentPlan({
+        docId: doc.id,
+        title: doc.title,
+        passage,
+        total: doc.passages.length,
+        text: doc.passages[passage],
+        words: doc.hardWords?.[passage] ?? [],
+      });
+      log(`Étude du document « ${doc.title} », passage ${passage + 1}`);
+      if (inScene) openHome();
+      renderHomePlan();
+      enterScene();
+    },
+    askKey: () => welcome.open('gemini'),
+    log,
+  },
+);
+$('open-documents').addEventListener('click', () => void documents.open());
+
 // ----------------------------------------------------------------- welcome
 const welcome = new WelcomeView($<HTMLDialogElement>('welcome'), {
   picture: (id) => picture('people', id),
@@ -1373,7 +1522,7 @@ $('copy-report').addEventListener('click', () => {
   const turns: Turn[] = talk?.transcript.turns ?? [];
   const learner = turns.filter((x) => x.who === 'you' && x.text.trim());
   const report = [
-    'English Buddy — rapport de test phase 4',
+    'English Buddy — rapport de test phase 5',
     `Date : ${new Date().toLocaleString('fr-FR')}`,
     `Conversation lancée avec : ${sessionLabel}`,
     `État : ${dState.textContent}`,
@@ -1385,8 +1534,8 @@ $('copy-report').addEventListener('click', () => {
     `Tours : ${learner.length} de toi, ${turns.filter((x) => x.who === 'buddy').length} du personnage ; interruptions du personnage : ${turns.filter((x) => x.interrupted).length}`,
     `Transcription : ${talk ? SOURCE_LABEL[talk.source] : '—'} ; échecs du 2ᵉ reconnaisseur : ${talk?.transcribeErrors ?? 0}`,
     `Bilan : ${current?.debrief ? `${current.debrief.mistakes.length} fautes, modèle ${current.debrief.model}` : 'aucun'}`,
-    `Profil donné : niveau ${talk?.profile.level ?? '—'}${talk?.profile.levelMeasured ? ' (estimé)' : ''}, mémoire ${talk?.profile.memory ? 'oui' : 'vide'} ; temps de parole mesuré : ${talk ? formatDuration(talk.speakingMs) : '—'}`,
-    `Plan : ${talk ? `${talk.plan.mode}${talk.plan.missionId ? ` (${talk.plan.missionId})` : ''}, ${talk.plan.reviews.length} faute(s) à reprendre, ${talk.plan.expressions.length} expression(s), ${goals.placedCount} placée(s) d’après le texte` : '—'}`,
+    `Profil donné : niveau ${talk?.profile.level ?? '—'}${talk?.profile.levelMeasured ? ' (estimé)' : ` (départ choisi : ${loadSettings().startLevel})`}, mémoire ${talk?.profile.memory ? 'oui' : 'vide'} ; temps de parole mesuré : ${talk ? formatDuration(talk.speakingMs) : '—'}`,
+    `Plan : ${talk ? `${talk.plan.mode}${talk.plan.missionId ? ` (${talk.plan.missionId})` : ''}${talk.plan.document ? ` (document de ${talk.plan.document.text.split(/\s+/).length} mots, passage ${talk.plan.document.passage + 1}/${talk.plan.document.total}, ${talk.plan.document.words.length} mots difficiles)` : ''}, ${talk.plan.reviews.length} faute(s) à reprendre, ${talk.plan.expressions.length} expression(s), ${goals.placedCount} placée(s) d’après le texte` : '—'}`,
     `Navigateur : ${navigator.userAgent}`,
     '--- Journal ---',
     ...logLines,

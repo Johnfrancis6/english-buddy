@@ -1,6 +1,6 @@
 # État du projet — English Buddy
 
-Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 4, mode autopilote).
+Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 5, mode autopilote).
 
 ## Où on en est
 
@@ -19,9 +19,11 @@ Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 4, mode 
 - **Phase 4 construite** (habitudes et défis), branche `phase-4` (partie
   de `phase-3`), guide [docs/tests/phase-4.md](tests/phase-4.md). Le site de
   test montre désormais la phase 4.
-- Prochaine étape (autopilote) : phase 5 (accueil et documents PDF), ouverte
-  par la session orchestratrice. Franco teste les guides 1, 2, 3 puis 4 à son
-  retour.
+- **Phase 5 construite** (accueil et documents), branche `phase-5` (partie
+  de `phase-4`), guide [docs/tests/phase-5.md](tests/phase-5.md). Le site de
+  test montre désormais la phase 5.
+- Prochaine étape (autopilote) : phase 6 (prononciation), ouverte par la
+  session orchestratrice. Franco teste les guides 1 à 5 à son retour.
 
 ## Mode autopilote (Franco absent)
 
@@ -52,6 +54,11 @@ amis et avant la fusion dans `main`.
       Le personnage remarque-t-il les expressions ? Missions trop faciles ou
       trop dures ? Réviser à voix haute sans que la machine écoute : ça te
       va ?
+- [ ] Phase 5 : suivre l'accueil dans une fenêtre privée **comme un ami** :
+      les clics d'AI Studio et de Groq sont-ils exacts avec un vrai compte ?
+      Le test du micro reconnaît-il ta voix et ton casque ? Importer 2 ou 3
+      vrais PDF (article, cours avec colonnes) : texte propre ? Mots
+      difficiles bien choisis ? Le personnage étudie-t-il bien le passage ?
 - [ ] Phase 3, **facultatif** — activer les comptes en ligne (Supabase,
       gratuit), environ 10 minutes :
   1. Va sur <https://supabase.com>, clique sur « Start your project » et
@@ -84,6 +91,69 @@ amis et avant la fusion dans `main`.
      est mis en pause (un clic pour le relancer).
 - [ ] Ouvrir la pull request finale vers `main` et la fusionner (ou la
       demander à Claude).
+
+## Auto-critique de la phase 5
+
+Ce qui marche (mesuré dans la session de construction, Google et Groq
+**simulés** pour les réponses positives, Chromium sans carte graphique) :
+
+- Accueil en 6 étapes, ouvert tout seul seulement pour quelqu'un sans clé
+  qui ne l'a pas fini ; « Plus tard » laisse l'accueil utilisable ; entrer
+  dans une scène sans clé rouvre l'accueil à l'étape de la clé (plus
+  d'ouverture automatique des réglages) ; « Revoir l'accueil guidé » dans les
+  réglages (tests Playwright).
+- Vérification des clés **contre les vrais serveurs, avec de fausses clés** :
+  Google accepte l'appel depuis le site (CORS, en-tête `x-goog-api-key`) et
+  répond 400 `API_KEY_INVALID` ; Groq répond 401 `invalid_api_key`. La clé
+  n'est jamais mise dans l'adresse (test de logique).
+- Test du micro avec le micro factice de Chromium : niveau affiché, « On
+  t'entend bien ✓ », micro choisi gardé et utilisé pour la conversation.
+- Niveau de départ choisi (A2) → le prompt du personnage dit « at about A2
+  level (a first estimate) » (test Playwright qui lit la configuration Live).
+- Un vrai PDF de 2 pages (fabriqué dans le test) lu par PDF.js 6.5.438 dans
+  le navigateur : titre trouvé, lignes recollées, passages ; gardé après
+  rechargement (IndexedDB v4).
+- Mots difficiles : une requête JSON à Gemini Flash avec **seulement le
+  passage** ; les mots choisis deviennent des cartes FSRS « français →
+  anglais » (dues le lendemain), un mot peut être ajouté à la main.
+- Étude : le passage arrive dans le prompt, entre marqueurs, avec la consigne
+  de ne pas suivre d'instructions écrites dans le document ; le bilan est
+  prévenu (vocabulaire du passage). Panneau « Étude d'un document ».
+- Lien web : page autorisée (CORS) importée sans exécuter ses scripts ; page
+  refusée → message en français avec l'astuce « Enregistrer au format PDF ».
+- Captures vérifiées contre DESIGN.md, à 1280 et à 420 px (pas de
+  défilement horizontal) ; lint, 141 tests de logique, Playwright au vert.
+
+Ce qui est **supposé, pas mesuré** :
+
+- Les clics exacts d'AI Studio (« Create API key », conditions à accepter,
+  projet créé tout seul) et de Groq (« Log In », « Create API Key ») : lus
+  dans la documentation et la page publique, **pas avec un vrai compte**.
+  Google dit que les nouvelles clés sont des « auth keys » depuis mai 2026
+  sans dire leur forme : je ne vérifie plus qu'elles commencent par « AIza ».
+- Qu'une vraie clé passe la vérification (200 attendu) et que la clé gratuite
+  puisse lister les modèles.
+- Le seuil du test du micro avec une vraie voix (réglé sur les bips du micro
+  factice).
+- La qualité du texte de vrais PDF (colonnes, tableaux, notes, en-têtes
+  répétés) ; la qualité des mots difficiles ; le comportement du personnage
+  en étude (questions, explications, ne pas lire le texte).
+
+Ce qui est faible :
+
+- Pas d'OCR : un PDF scanné n'a pas de texte (message clair, rien de plus).
+- La découpe en paragraphes est faite par règles : une ligne courte sans
+  point suivie d'une majuscule est prise pour un titre (peut couper une
+  phrase en deux) ; les en-têtes et pieds de page répétés restent dans le
+  texte.
+- La plupart des sites d'actualité refusent la lecture depuis le navigateur
+  (CORS) : le lien web marchera rarement ; le PDF reste la voie principale.
+- Un document peut contenir des instructions cachées : la consigne au modèle
+  réduit le risque, sans le supprimer.
+- Le choix du micro n'est pas proposé dans Firefox avant la première
+  permission (les noms des micros n'apparaissent qu'après).
+- L'accueil ne reprend pas à l'étape où l'ami s'était arrêté (il recommence
+  au début, les choix déjà faits restent).
 
 ## Auto-critique de la phase 4
 
@@ -327,13 +397,12 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Autopilote : phase 5 (accueil en français avec guide pour créer les clés
-  gratuites, import de PDF et étude avec un personnage, mots ajoutés aux
-  révisions), modèle conseillé **Opus 5.5**, branche `phase-5` créée depuis
-  `phase-4`, ouverte par la session orchestratrice. Prêt pour elle : les
-  cartes de révision (`src/reviews/cards.ts`, `draftsFromDebrief` ;
-  un mot d'un document = une carte `word`), le plan de conversation
-  (`src/habit/plan.ts`) pour « étudier un document avec un personnage ».
+- Autopilote : phase 6 (prononciation : score par mot, sons difficiles ;
+  comparer d'abord les options gratuites), modèle conseillé **Opus 5.5**,
+  branche `phase-6` créée depuis `phase-5`, ouverte par la session
+  orchestratrice. Prêt pour elle : le micro choisi (`micDeviceId`), le niveau
+  de départ, les cartes « mot » (une carte de prononciation peut suivre le
+  même modèle que `cardId('word', …)`).
 
 ## Journal
 
@@ -351,8 +420,14 @@ Ce qui est faible :
 | 2026-11-10 | Phase 3 | Mémoire des personnages (faits en français, résumé par personnage, écran voir / corriger / effacer / ajouter) ; profil dans le prompt (niveau estimé, fautes fréquentes) ; bilan avec sous-notes, faits et résumé ; « Mes progrès » (niveau estimé, fautes par type et par semaine, temps de parole, mots nouveaux, longueur des phrases, toutes les conversations) ; compte Supabase préparé mais éteint (code, SQL avec RLS). Testé avec Google simulé, sans serveur Supabase | En attente (autopilote) |
 | 2026-11-10 | Phase 4 | Révisions FSRS (ts-fsrs 6.0.0) de ses propres fautes et des mots des bilans, à voix haute et auto-notées ; défi du jour de 5 minutes avec fautes à reprendre et expressions à placer, jugé par le bilan qui met les cartes à jour ; 9 missions sur une carte à 3 niveaux, réussies ou ratées avec une note ; expressions cochées en direct et remarquées par le personnage ; série de jours ≥ 3 min de parole avec un joker par semaine. Testé avec Google simulé | En attente (autopilote) |
 | 2026-11-10 | Phase 2 | DESIGN.md + styles partagés ; accueil (lieu + personnage) ; 5 personnages VRoid gratuits allégés (Jake, Emma, Maya, Ollie en veste, Lily 9 ans) ; décors toon café / bureau / rue ; marche, salut, hochement, rire, réflexion, check du poing déclenchés par la conversation ; voix et prompt par personnage ; mesures repliables avec images/s. Testé avec Google simulé, sans GPU | En attente (autopilote) |
+| 2026-11-10 | Phase 5 | Accueil guidé en français en 6 étapes (confidentialité, clé Gemini gratuite vérifiée, clé Groq facultative, choix et test du micro, niveau de départ, premier personnage), revisible depuis les réglages ; documents : import PDF lu dans le navigateur (PDF.js 6.5.438), passages, mots difficiles (Gemini Flash) ajoutés aux révisions FSRS, étude d'un passage avec un personnage, lien web seulement si le site l'autorise (CORS). Testé avec Google simulé | En attente (autopilote) |
 
 ## Points ouverts
+
+- OCR des PDF scannés (Tesseract.js, gratuit, lourd) : si Franco le veut.
+- Documents dans le compte Supabase : non (texte complet local, comme le
+  brief) ; seulement les cartes, quand les comptes seront activés.
+- Accueil : reprendre à l'étape où l'on s'était arrêté.
 
 - Révisions écoutées par la machine (Gemini ou Groq qui vérifie la phrase
   dite) au lieu de l'auto-notation : à décider avec Franco (coût en quota).

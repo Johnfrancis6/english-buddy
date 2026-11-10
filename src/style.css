@@ -963,3 +963,87 @@ body.page {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* =================================================== documents (phase 5) */
+.documents {
+  width: min(680px, 94vw);
+}
+.link-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.link-row input {
+  flex: 1;
+  min-width: 0;
+}
+.doc-list,
+.doc-words {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-2) 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.doc-item,
+.doc-words li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+.doc-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.doc-title {
+  margin: var(--space-2) 0;
+}
+.doc-nav {
+  align-items: center;
+}
+.passage-text p {
+  margin: 0 0 var(--space-2);
+}
+.doc-passage {
+  max-height: 38vh;
+  overflow: auto;
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-3) 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  line-height: 1.6;
+}
+.chip.ok {
+  background: var(--success-soft);
+  color: var(--success);
+  white-space: nowrap;
+}
+.doc-manual {
+  margin-top: var(--space-3);
+}
+.doc-manual summary,
+.goal-passage summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+}
+.goal-passage .passage-text {
+  max-height: 30vh;
+  overflow: auto;
+  margin-top: var(--space-2);
+}
+@media (max-width: 560px) {
+  .doc-item,
+  .doc-words li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

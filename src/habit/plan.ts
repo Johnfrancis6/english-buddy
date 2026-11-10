@@ -3,6 +3,7 @@ import { dueCards, type ReviewCard } from '../reviews/cards';
 import type { SceneId } from '../teaching/persona';
 import { SCENE_EXPRESSIONS, type Expression } from './expressions';
 import type { Mission } from './missions';
+import { documentPrompt, type HardWord } from '../documents/text';
 
 /**
  * What a talk is for, beyond chatting: a mission, expressions to place and,
@@ -17,13 +18,27 @@ export interface ReviewItem {
   type: MistakeType;
 }
 
+/** Phase 5: one passage of an imported document, studied with a character. */
+export interface DocumentStudy {
+  docId: string;
+  title: string;
+  /** Passage index (0-based) and number of passages. */
+  passage: number;
+  total: number;
+  /** The passage itself (saved with the talk, text only). */
+  text: string;
+  words: HardWord[];
+}
+
 export interface TalkPlan {
-  mode: 'free' | 'mission' | 'challenge';
+  mode: 'free' | 'mission' | 'challenge' | 'document';
   missionId?: string;
   reviews: ReviewItem[];
   expressions: Expression[];
   /** Planned length (the daily challenge), in minutes. */
   minutes?: number;
+  /** Phase 5: the document passage being studied. */
+  document?: DocumentStudy;
 }
 
 export const FREE_PLAN: TalkPlan = { mode: 'free', reviews: [], expressions: [] };
@@ -62,6 +77,10 @@ export function buildChallenge(
   return { mode: 'challenge', reviews, expressions, minutes: CHALLENGE_MINUTES };
 }
 
+export function documentPlan(study: DocumentStudy): TalkPlan {
+  return { mode: 'document', reviews: [], expressions: [], document: study };
+}
+
 export function missionPlan(m: Mission): TalkPlan {
   return { mode: 'mission', missionId: m.id, reviews: [], expressions: [...m.expressions] };
 }
@@ -72,6 +91,10 @@ export function missionPlan(m: Mission): TalkPlan {
  */
 export function planPrompt(plan: TalkPlan, mission: Mission | undefined): string {
   const blocks: string[] = [];
+  if (plan.document) {
+    const d = plan.document;
+    blocks.push(documentPrompt(d.title, d.text, d.passage, d.total, d.words));
+  }
   if (plan.mode === 'challenge') {
     blocks.push(
       `This talk is the learner's short daily challenge: about ${plan.minutes ?? CHALLENGE_MINUTES} minutes. Keep the pace lively and give them plenty of chances to speak.`,

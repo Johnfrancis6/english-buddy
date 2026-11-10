@@ -49,6 +49,11 @@ export function planInstructions(ctx: AnalysisContext): string {
   const plan = ctx.plan;
   if (!plan || plan.mode === 'free') return '';
   const out: string[] = [];
+  if (plan.document) {
+    out.push(
+      `Document study: the talk was about passage ${plan.document.passage + 1} of a document the learner imported ("${plan.document.title}"). In "vocabulary", prefer words and expressions of this passage that the learner struggled with, asked about or should reuse; the "example" may come from the passage. Judge their English as usual; do not judge their reading.`,
+    );
+  }
   const mission = missionById(plan.missionId);
   if (mission) {
     const avoid = mission.forbidden.length

@@ -36,7 +36,47 @@ export class GoalsView {
     this.panel.hidden = plan.mode === 'free';
     this.panel.dataset.mode = plan.mode;
     if (plan.mode === 'free') return;
-    this.title.textContent = plan.mode === 'challenge' ? 'Défi du jour' : 'Ta mission';
+    this.title.textContent =
+      plan.mode === 'challenge'
+        ? 'Défi du jour'
+        : plan.mode === 'document'
+          ? 'Étude d’un document'
+          : 'Ta mission';
+    if (plan.document) {
+      const d = plan.document;
+      this.body.append(
+        el('p', { class: 'goal-title', text: d.title }),
+        el('p', {
+          class: 'small',
+          text: `Passage ${d.passage + 1} sur ${d.total}. ${characterName} te pose des questions sur le texte et t’explique les mots difficiles : demande-lui « What does … mean? ».`,
+        }),
+        el(
+          'details',
+          { class: 'goal-passage' },
+          el('summary', { text: 'Le passage' }),
+          el('div', { class: 'passage-text small', lang: 'en' }, ...paragraphs(d.text)),
+        ),
+      );
+      if (d.words.length) {
+        this.body.append(
+          el('h3', { text: 'Mots du passage' }),
+          el(
+            'ul',
+            { class: 'goal-list' },
+            ...d.words
+              .slice(0, 8)
+              .map((w) =>
+                el(
+                  'li',
+                  {},
+                  el('strong', { lang: 'en', text: w.english }),
+                  el('span', { class: 'muted small', text: ` — ${w.french}` }),
+                ),
+              ),
+          ),
+        );
+      }
+    }
     if (mission) {
       this.body.append(
         el('p', { class: 'goal-title', text: mission.titleFr }),
@@ -157,4 +197,12 @@ export class GoalsView {
 export function clock(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/** A passage as paragraphs (text only). */
+export function paragraphs(text: string): HTMLElement[] {
+  return text
+    .split(/\n{2,}/)
+    .filter((p) => p.trim())
+    .map((p) => el('p', { text: p.trim() }));
 }
