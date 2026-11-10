@@ -1,6 +1,6 @@
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from '@google/genai';
 import { Mic, MIC_CHUNK_MS, MIC_RATE, PcmPlayer } from './audio';
-import { friendly, friendlyFromClose, friendlyFromUnknown } from './errors';
+import { classify, friendly, friendlyFromClose, friendlyFromUnknown } from './errors';
 import { LatencyTracker } from './latency';
 import { base64ToBytes, bytesToBase64, sampleRateFromMime } from './pcm';
 import { JAKE_GREETING_CUE, JAKE_SYSTEM_PROMPT } from './persona';
@@ -40,6 +40,8 @@ export class GeminiLiveSession implements VoiceSession {
   private autoReconnects = 0;
   private opts: GeminiLiveOptions | null = null;
   private apiVersion: string = API_VERSIONS[0];
+  /** Tell the transcriber the talk is in English; dropped if Google refuses it. */
+  private languageHint = true;
 
   constructor(
     private readonly player: PcmPlayer,
@@ -77,6 +79,7 @@ export class GeminiLiveSession implements VoiceSession {
     this.stopping = false;
     this.autoReconnects = 0;
     this.resumeHandle = null;
+    this.languageHint = true;
     this.latency.reset();
     this.setState('connecting');
     try {
@@ -102,8 +105,23 @@ export class GeminiLiveSession implements VoiceSession {
         return;
       } catch (err) {
         lastError = err;
+        const message = String((err as Error)?.message);
         // Only a refused handshake is worth another version.
-        if (!/connection failed|websocket error/i.test(String((err as Error)?.message))) break;
+        if (/connection failed|websocket error/i.test(message)) continue;
+        const kind = classify(message);
+        if (this.languageHint && kind !== 'bad-key' && kind !== 'quota') {
+          // The setup was refused for another reason: retry once without the
+          // optional language hint before giving up.
+          this.languageHint = false;
+          try {
+            await this.connect(true);
+            this.events.onInfo(`Connecté à Google (API ${version}, sans indice de langue)`);
+            return;
+          } catch (retryErr) {
+            lastError = retryErr;
+          }
+        }
+        break;
       }
     }
     throw lastError;
@@ -147,8 +165,11 @@ export class GeminiLiveSession implements VoiceSession {
         responseModalities: [Modality.AUDIO],
         systemInstruction: JAKE_SYSTEM_PROMPT,
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voice } } },
-        inputAudioTranscription: {},
-        outputAudioTranscription: {},
+        // The transcript comes from a separate recogniser, not from what the
+        // voice model understood. Without a hint it guesses the language, and
+        // a French accent can push it towards French spellings.
+        inputAudioTranscription: this.languageHint ? { languageCodes: ['en-US'] } : {},
+        outputAudioTranscription: this.languageHint ? { languageCodes: ['en-US'] } : {},
         // Server-side voice activity detection. The learner chooses how much
         // silence ends their turn (docs recommend 500–800 ms, default ≈ 800 ms).
         realtimeInputConfig: {

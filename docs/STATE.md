@@ -74,6 +74,7 @@ Ce qui est faible :
 | 2026-11-09 | Phase 0 | Squelette Vite/TS, personnage VRM (regard, clignement, repos), voix Gemini Live avec clé du navigateur, lèvres synchronisées, mesure du délai, messages d'erreur, déploiement Pages, guide de test. Conversation réelle non testée (pas de clé en session) | Déploiement vert, « l'essai marche » (2026-11-10). Mesures détaillées à rapporter |
 | 2026-11-10 | Phase 0 (retouche) | Réglage « Ton rythme de parole » : silence de fin de tour au choix (0,5 / 0,9 / 1,5 s) | En attente |
 | 2026-11-10 | Phase 0 (mesure) | Rapport de Franco (Firefox 159, gemini-3.8-live, clé gratuite) : délai médian **0,96 s** sur 10 tours, 1 min 55 sans erreur. Deux faux délais (0,02 et 0,04 s) : la mesure ignore désormais les valeurs < 0,2 s | Reste à tester : 10 minutes, interruption, rythme de parole |
+| 2026-11-10 | Phase 0 (mesure) | 2ᵉ rapport de Franco : **11 min 43 sans coupure ni refus** ; délai médian réel ≈ 1,3–1,4 s (37 tours, une fois retirés 17 faux délais < 0,2 s) ; aucune reconnexion observée. Ajout d'un indice de langue anglais pour la transcription | Transcription : mots mal écrits alors que Jake comprend |
 
 ## Points ouverts
 
@@ -93,3 +94,12 @@ Ce qui est faible :
   hésitation d'une fin de phrase) : l'API Gemini ne propose qu'une durée de
   silence. Une vraie détection demanderait notre propre détecteur dans le
   navigateur ; à décider après le retour de Franco sur le réglage de rythme.
+- Qualité de la transcription des phrases de l'apprenant : Franco voit des
+  mots mal écrits. Indice de langue ajouté (effet non mesuré). C'est le
+  risque n° 3 du brief : à comparer avec Groq Whisper au début de la
+  phase 1, car les corrections dépendront de ce texte.
+- Reconnexion automatique vers 10 minutes : jamais déclenchée en test réel
+  (Google n'a pas coupé à 11 min 43).
+- Jake prend souvent la parole pendant que l'apprenant parle encore
+  (17 fois en 11 minutes en réglage « Rapide ») : à revoir avec le réglage
+  de rythme ; sinon détecteur de fin de tour maison.
