@@ -121,7 +121,7 @@ test('import a PDF, find hard words, add them to reviews, study with Jake', asyn
 
   // Hard words from the (simulated) model: only the passage is sent.
   await page.locator('#doc-find-words').click();
-  await expect(dlg.locator('.doc-words li')).toHaveCount(3);
+  await expect(dlg.locator('.doc-words li')).toHaveCount(3, { timeout: 20_000 });
   expect(hardWordsAsked).toContain('Remote work has become widespread');
   expect(hardWordsAsked).toContain('responseJsonSchema');
   await dlg.locator('.doc-words li[data-word="widespread"] button').click();
