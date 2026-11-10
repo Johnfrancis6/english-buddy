@@ -33,7 +33,7 @@ export const DEFAULTS: Settings = {
   apiKey: '',
   model: MODELS[0].id,
   voice: VOICES[0],
-  pauseMs: PAUSES[0].ms,
+  pauseMs: PAUSES[1].ms,
 };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;

@@ -4,19 +4,20 @@ Dernière mise à jour : 2026-11-09 (fin de la construction de la phase 0).
 
 ## Où on en est
 
-- **Phase 0 construite, en attente du test de Franco.** Branche `phase-0`.
-- Lien de test : <https://johnfrancis6.github.io/english-buddy/> (à activer
-  une fois, voir le guide).
-- Guide de test : [tests/phase-0.md](tests/phase-0.md).
-- Rien ne passe à la phase 1 sans le feu vert de Franco.
+- **Phase 0 validée par Franco le 2026-11-10** (feu vert pour la phase 1).
+- Résultats mesurés avec sa clé gratuite (`gemini-3.8-live`) : 11 min 43
+  sans coupure ni refus ; délai médian 1,0 à 1,4 s ; en rythme « Posé »
+  (désormais par défaut) Jake le laisse finir ses phrases.
+- Lien de test : <https://johnfrancis6.github.io/english-buddy/>.
+- **Prochaine étape : phase 1** (conversation pédagogique), dans une
+  nouvelle session.
 
 ## Ce que Franco doit faire maintenant
 
-- [ ] Activer GitHub Pages et autoriser les branches `phase-*` (clics exacts
-      au début du guide de test).
-- [ ] Faire les tests du guide avec sa clé Gemini et rapporter : délai
-      médian, tenue des 10 minutes, voix, lèvres, interruption.
-- [ ] Donner le feu vert (ou non) pour la phase 1.
+- [ ] Fusionner la pull request `phase-0` → `main` (bouton vert **Merge
+      pull request**, puis **Confirm merge**).
+- [ ] Ouvrir une nouvelle session pour la phase 1 (voir « Prochaine
+      session »).
 
 ## Auto-critique de la phase 0
 
@@ -59,12 +60,13 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Si le test est bon : phase 1 (conversation pédagogique), modèle conseillé
-  **Opus 5.5**. Prompt : « Lis CLAUDE.md, docs/STATE.md et docs/BRIEF.md,
-  puis réalise la phase 1. Arrête-toi à la fin de la phase. »
-- Si le test échoue (refus du quota, coupures, délai > 1,5 s) : coller le
-  rapport, corriger la phase 0 et tester le pipeline de secours avant la
-  phase 1.
+- Phase 1 (conversation pédagogique), modèle conseillé **Opus 5.5**,
+  branche `phase-1`. Prompt : « Lis CLAUDE.md, docs/STATE.md et
+  docs/BRIEF.md, puis réalise la phase 1. Arrête-toi à la fin de la
+  phase. »
+- À faire en premier dans la phase 1 : comparer la transcription Gemini
+  avec Groq Whisper sur des phrases avec fautes volontaires (risque n° 3 du
+  brief ; Franco a vu des mots mal écrits).
 
 ## Journal
 
@@ -77,6 +79,7 @@ Ce qui est faible :
 | 2026-11-10 | Phase 0 (mesure) | 2ᵉ rapport de Franco : **11 min 43 sans coupure ni refus** ; délai médian réel ≈ 1,3–1,4 s (37 tours, une fois retirés 17 faux délais < 0,2 s) ; aucune reconnexion observée. Ajout d'un indice de langue anglais pour la transcription | Transcription : mots mal écrits alors que Jake comprend |
 | 2026-11-10 | Phase 0 (mesure) | 3ᵉ rapport : indice de langue accepté par Google ; médiane 1,05 s sur 3 min 29. Réglage de pause changé en cours de conversation, donc pause réellement utilisée incertaine. Le rapport indique désormais les réglages de la conversation et compte les prises de parole de Jake par-dessus l'apprenant | En attente d'un essai « Posé » propre |
 | 2026-11-10 | Phase 0 (mesure) | 4ᵉ rapport, réglage « Posé » (900 ms) actif dès le départ : médiane **1,42 s** sur 7 tours (1 min 14), soit environ +0,4 s par rapport à « Rapide », comme prévu | Ressenti (coupures, transcription) à confirmer |
+| 2026-11-10 | Phase 0 (validation) | Rythme « Posé » par défaut ; pull request vers `main` | « Oui il me laisse finir, feu vert pour la phase 1 » |
 
 ## Points ouverts
 
@@ -105,3 +108,7 @@ Ce qui est faible :
 - Jake prend souvent la parole pendant que l'apprenant parle encore
   (17 fois en 11 minutes en réglage « Rapide ») : à revoir avec le réglage
   de rythme ; sinon détecteur de fin de tour maison.
+- Non confirmés par Franco à la fin de la phase 0 (à revérifier en
+  phase 1) : interruption de Jake, effet de l'indice de langue sur la
+  transcription, crédibilité des lèvres, test dans Chrome (tous les essais
+  ont été faits dans Firefox 159).
