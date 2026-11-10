@@ -77,6 +77,10 @@ test('home, scene, character, key, gestures and lip sync', async ({ page }) => {
   const measures = page.locator('#measures');
   await expect(measures).toBeVisible();
   await expect(measures).not.toHaveAttribute('open');
+  // The top bar stays on one line and never covers the measures.
+  const bar = await page.locator('.topbar').boundingBox();
+  const side = await measures.boundingBox();
+  expect(bar!.y + bar!.height).toBeLessThanOrEqual(side!.y);
   await measures.locator('summary').click();
   await expect(page.locator('#d-fps')).not.toHaveText('—', { timeout: 5000 });
 

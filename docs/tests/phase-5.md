@@ -29,6 +29,9 @@ fin : tout ce qu'elle contient est oublié.
   révisions** (FSRS), puis **étudier le passage à voix haute** avec un
   personnage : il te demande ce que tu as compris, t'explique les mots, te
   pose des questions sur le texte.
+- Le **labo transcription** n'est plus dans la barre du haut (place prise
+  par « Documents ») : il est dans Réglages → « Transcription et bilan » →
+  lien « labo transcription ».
 - Un **lien web** marche seulement si le site l'autorise ; sinon un message
   clair te propose d'enregistrer la page en PDF.
 
