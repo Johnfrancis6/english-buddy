@@ -197,6 +197,10 @@ export function buildSystemPrompt(
   character: Character = JAKE,
   learner: LearnerProfile = DEFAULT_LEARNER,
   scene: SceneId = 'cafe',
+  /** Phase 4: mission, review items and expressions to place (habit/plan.ts). */
+  plan = '',
+  /** Phase 4: a mission's setting replaces the character's usual scene line. */
+  sceneLine?: string,
 ): string {
   const level = `at about ${learner.level} level (${learner.levelMeasured ? 'estimated from their recent talks' : 'a first estimate'})`;
   const about =
@@ -206,10 +210,11 @@ export function buildSystemPrompt(
   return [
     character.persona,
     character.voiceStyle,
-    `Scene: ${character.scenes[scene]}`,
+    `Scene: ${sceneLine ?? character.scenes[scene]}`,
     `${about} ${levelGuide[learner.level]}`,
     mistakesBlock(learner),
     learner.memory ?? '',
+    plan,
     conversationPolicy(character.name),
     CORRECTION_POLICY,
   ]

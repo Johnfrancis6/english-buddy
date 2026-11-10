@@ -1,4 +1,5 @@
 import type { FactUpdate } from '../memory/facts';
+import type { TalkPlan } from '../habit/plan';
 
 /** Mistake taxonomy (docs/BRIEF.md §5), with the French label shown. */
 export const MISTAKE_TYPES = {
@@ -63,6 +64,38 @@ export interface Debrief {
   memory?: FactUpdate[];
   /** Phase 3+: what the talk was about, for the character's memory (French). */
   talkMemoryFr?: string;
+  /** Phase 4: result of the talk's mission, when it had one. */
+  mission?: MissionResult;
+  /** Phase 4: the expressions to place, and whether they were used. */
+  expressions?: ExpressionResult[];
+  /** Phase 4: the review items of a daily challenge, as judged in the talk. */
+  reviews?: ReviewResult[];
+}
+
+export interface MissionResult {
+  passed: boolean;
+  /** 0–100. */
+  score: number;
+  feedbackFr: string;
+  /** Forbidden words the learner said (found in the transcript by the page). */
+  forbiddenSaid: string[];
+}
+
+export interface ExpressionResult {
+  en: string;
+  used: boolean;
+  /** Used in a natural, correct way. */
+  natural: boolean;
+  /** The learner's words where it was used ('' if not used). */
+  quote: string;
+  cardId?: string;
+}
+
+export interface ReviewResult {
+  cardId: string;
+  result: 'correct' | 'wrong' | 'absent';
+  /** The learner's words that show it ('' if absent). */
+  quote: string;
 }
 
 /** One line of the conversation as given to the analyzer. */
@@ -82,6 +115,8 @@ export interface AnalysisContext {
   transcriptSource: string;
   /** What is already known about the learner, with ids (memory/facts.ts). */
   knownFacts?: string;
+  /** Phase 4: the mission, expressions and review items of this talk. */
+  plan?: TalkPlan;
 }
 
 /**

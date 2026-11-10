@@ -6,7 +6,7 @@ import {
   explainUserPrompt,
   formatTranscript,
 } from './prompts';
-import { DEBRIEF_SCHEMA, parseDebrief } from './schema';
+import { debriefSchema, parseDebrief } from './schema';
 import type { AnalysisContext, AnalysisTurn, Analyzer, Debrief, Mistake } from './types';
 
 /** Debrief and explanations from a Gemini text model, with the user's key. */
@@ -28,18 +28,22 @@ export class GeminiAnalyzer implements Analyzer {
     signal?: AbortSignal,
   ): Promise<Debrief> {
     const learnerIds = new Set(turns.filter((t) => t.who === 'you').map((t) => t.id));
+    const learnerText = turns
+      .filter((t) => t.who === 'you')
+      .map((t) => t.text)
+      .join('\n');
     const { value } = await withModelFallback(this.models, async (model) => {
       const raw = await generateText({
         apiKey: this.apiKey,
         model,
         system: debriefSystemPrompt(ctx),
         parts: [{ text: `Transcript:\n${formatTranscript(turns, ctx.characterName)}` }],
-        jsonSchema: DEBRIEF_SCHEMA,
+        jsonSchema: debriefSchema(ctx.plan),
         temperature: 0.2,
         signal,
       });
       try {
-        return parseDebrief(raw, learnerIds, model);
+        return parseDebrief(raw, learnerIds, model, ctx.plan, learnerText);
       } catch (err) {
         throw new ProviderError('gemini', 'bad-output', String((err as Error).message));
       }

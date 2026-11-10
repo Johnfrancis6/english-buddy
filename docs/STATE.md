@@ -1,6 +1,6 @@
 # État du projet — English Buddy
 
-Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 3, mode autopilote).
+Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 4, mode autopilote).
 
 ## Où on en est
 
@@ -16,8 +16,11 @@ Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 3, mode 
 - **Phase 3 construite** (mémoire et progrès), branche `phase-3` (partie
   de `phase-2`), guide [docs/tests/phase-3.md](tests/phase-3.md). Le site de
   test montre désormais la phase 3.
-- Prochaine étape (autopilote) : phase 4 (habitudes et défis), ouverte par
-  la session orchestratrice. Franco teste les guides 1, 2 puis 3 à son
+- **Phase 4 construite** (habitudes et défis), branche `phase-4` (partie
+  de `phase-3`), guide [docs/tests/phase-4.md](tests/phase-4.md). Le site de
+  test montre désormais la phase 4.
+- Prochaine étape (autopilote) : phase 5 (accueil et documents PDF), ouverte
+  par la session orchestratrice. Franco teste les guides 1, 2, 3 puis 4 à son
   retour.
 
 ## Mode autopilote (Franco absent)
@@ -44,6 +47,11 @@ amis et avant la fusion dans `main`.
 - [ ] Phase 3 : justesse des notes du bilan (trop sévères ? trop
       gentilles ?), mémoire vraie et naturelle (rien d'inventé, rien de
       gênant), utilité de « Mes progrès ».
+- [ ] Phase 4 : un défi de 5 minutes donne-t-il 3 minutes de ta voix (série) ?
+      Les fautes reprises et les expressions placées sont-elles bien jugées ?
+      Le personnage remarque-t-il les expressions ? Missions trop faciles ou
+      trop dures ? Réviser à voix haute sans que la machine écoute : ça te
+      va ?
 - [ ] Phase 3, **facultatif** — activer les comptes en ligne (Supabase,
       gratuit), environ 10 minutes :
   1. Va sur <https://supabase.com>, clique sur « Start your project » et
@@ -76,6 +84,66 @@ amis et avant la fusion dans `main`.
      est mis en pause (un clic pour le relancer).
 - [ ] Ouvrir la pull request finale vers `main` et la fusionner (ou la
       demander à Claude).
+
+## Auto-critique de la phase 4
+
+Ce qui marche (mesuré dans la session de construction, Google **simulé**,
+Chromium sans carte graphique) :
+
+- Cartes de révision créées à partir des bilans (les anciens bilans sont
+  convertis une fois) : une carte par bonne forme, les fautes de
+  « prononciation » devinées sont écartées ; planification par `ts-fsrs`
+  6.0.0 (modèle FSRS-7) : « Je l'avais » repousse la carte de plusieurs jours,
+  « Raté » la ramène le lendemain ; tout est gardé après rechargement.
+- Révisions à voix haute (auto-notées) : carte par carte, réponse cachée,
+  quatre boutons, retrait d'une carte ; le compteur baisse (test Playwright).
+- Défi du jour : le prompt envoyé à Google contient les fautes à reprendre
+  (sans la réponse côté écran), les expressions et la durée ; une expression
+  dite est cochée tout de suite ; le schéma envoyé à l'analyseur contient
+  exactement les cartes et les expressions prévues ; après le bilan, forme
+  réussie → plus tard, même faute → demain, expression placée → plus tard
+  (test Playwright : 5 cartes dues → 2).
+- Missions : 9 missions, carte à 3 niveaux, verrouillage écrit en clair ;
+  le rôle de la mission remplace la scène habituelle dans le prompt ; mot
+  interdit repéré en direct et mission ratée (40/100 au plus) quoi que dise
+  le modèle (test Playwright).
+- Série : jours ≥ 3 min de parole mesurée, joker hebdomadaire, record ;
+  testée sur des cas de calendrier (tests de logique).
+- Lint, 116 tests de logique, 10 tests Playwright au vert (un par un, comme
+  en CI ; en parallèle sur cette machine sans GPU, deux anciens tests de
+  gestes et de bilan dépassent parfois leur délai).
+
+Ce qui est **supposé, pas mesuré** :
+
+- Que le personnage (`gemini-3.8-live`) tende vraiment des perches pour les
+  anciennes fautes **sans donner la réponse**, joue le rôle de la mission et
+  remarque les expressions placées, sans en faire trop.
+- Que `gemini-3.8-flash` juge bien « bonne forme / même faute / pas venue »
+  et la réussite d'une mission ; la note sur 100 d'une mission est une
+  estimation, comme les sous-notes.
+- Qu'un défi de 5 minutes donne 3 minutes de voix de l'apprenant (le
+  personnage parle aussi) : peut-être pas ; le panneau montre le compteur.
+- Le délai de création des cartes : environ 3 s ici pour 6 cartes, car le
+  rendu 3D sans GPU occupe le navigateur ; attendu bien plus court sur la
+  GTX 1070.
+
+Ce qui est faible :
+
+- Les révisions rapides ne sont pas écoutées : l'apprenant se note
+  lui-même (honnêteté requise). La reconnaissance vocale du navigateur
+  n'existe pas dans Firefox, que Franco utilise ; une vraie écoute
+  demanderait Gemini ou Groq (clé, quota). Seul le défi est jugé par l'IA.
+- Une carte « faute » est identifiée par sa bonne forme : deux phrases
+  différentes avec la même correction ne font qu'une carte, mais une
+  correction légèrement différente en fait une nouvelle.
+- Le repérage en direct des expressions est fait par motifs (formes
+  régulières, « be », quelques formes irrégulières écrites à la main) : il
+  peut rater une forme rare ; le bilan ne peut qu'ajouter « placée », jamais
+  retirer une expression repérée dans le texte.
+- Les missions et les expressions sont écrites à la main (9 + 18) ; pas
+  encore adaptées au niveau, au-delà des 3 niveaux de la carte.
+- Les cartes ne vont pas encore dans le compte Supabase (tout en local).
+- Le compte à rebours n'arrête pas la conversation (choix assumé).
 
 ## Auto-critique de la phase 3
 
@@ -259,12 +327,13 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Autopilote : phase 4 (habitudes et défis : révisions FSRS de ses propres
-  fautes, défi du jour de 5 minutes, missions, expressions à placer, série
-  de jours, carte des scènes), modèle conseillé **Opus 5.5**, branche
-  `phase-4` créée depuis `phase-3`, ouverte par la session orchestratrice.
-  Données prêtes pour elle : fautes et mots par conversation (IndexedDB),
-  temps de parole mesuré par conversation (pour la série ≥ 3 min).
+- Autopilote : phase 5 (accueil en français avec guide pour créer les clés
+  gratuites, import de PDF et étude avec un personnage, mots ajoutés aux
+  révisions), modèle conseillé **Opus 5.5**, branche `phase-5` créée depuis
+  `phase-4`, ouverte par la session orchestratrice. Prêt pour elle : les
+  cartes de révision (`src/reviews/cards.ts`, `draftsFromDebrief` ;
+  un mot d'un document = une carte `word`), le plan de conversation
+  (`src/habit/plan.ts`) pour « étudier un document avec un personnage ».
 
 ## Journal
 
@@ -280,9 +349,17 @@ Ce qui est faible :
 | 2026-11-10 | Phase 0 (validation) | Les deux rythmes gardés, « Rapide » par défaut | « Oui il me laisse finir, feu vert pour la phase 1 » ; « je veux les deux délais, je passerai sur 500 pour une meilleure fluidité » |
 | 2026-11-10 | Phase 1 | Prompt complet de Jake (reprise sans leçon, tours courts, questions ouvertes), texte en direct, labo transcription (Gemini Live / Groq Whisper / Gemini Flash), bilan JSON en français par type de faute, bouton « Pourquoi ? », conversations en texte dans le navigateur. Testé avec Google et Groq simulés, aucune vraie conversation | En attente |
 | 2026-11-10 | Phase 3 | Mémoire des personnages (faits en français, résumé par personnage, écran voir / corriger / effacer / ajouter) ; profil dans le prompt (niveau estimé, fautes fréquentes) ; bilan avec sous-notes, faits et résumé ; « Mes progrès » (niveau estimé, fautes par type et par semaine, temps de parole, mots nouveaux, longueur des phrases, toutes les conversations) ; compte Supabase préparé mais éteint (code, SQL avec RLS). Testé avec Google simulé, sans serveur Supabase | En attente (autopilote) |
+| 2026-11-10 | Phase 4 | Révisions FSRS (ts-fsrs 6.0.0) de ses propres fautes et des mots des bilans, à voix haute et auto-notées ; défi du jour de 5 minutes avec fautes à reprendre et expressions à placer, jugé par le bilan qui met les cartes à jour ; 9 missions sur une carte à 3 niveaux, réussies ou ratées avec une note ; expressions cochées en direct et remarquées par le personnage ; série de jours ≥ 3 min de parole avec un joker par semaine. Testé avec Google simulé | En attente (autopilote) |
 | 2026-11-10 | Phase 2 | DESIGN.md + styles partagés ; accueil (lieu + personnage) ; 5 personnages VRoid gratuits allégés (Jake, Emma, Maya, Ollie en veste, Lily 9 ans) ; décors toon café / bureau / rue ; marche, salut, hochement, rire, réflexion, check du poing déclenchés par la conversation ; voix et prompt par personnage ; mesures repliables avec images/s. Testé avec Google simulé, sans GPU | En attente (autopilote) |
 
 ## Points ouverts
+
+- Révisions écoutées par la machine (Gemini ou Groq qui vérifie la phrase
+  dite) au lieu de l'auto-notation : à décider avec Franco (coût en quota).
+- Cartes de révision dans le compte Supabase : quand les comptes seront
+  activés.
+- Missions adaptées au niveau (plus de missions, missions écrites à partir
+  des fautes) ; arrêt automatique du défi à 5 minutes si Franco le préfère.
 
 - Nom définitif de la plateforme (provisoire : « English Buddy »).
 - Quatrième personnage (conférence / école) : hors version 1.

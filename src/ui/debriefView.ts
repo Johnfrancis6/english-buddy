@@ -18,12 +18,106 @@ export interface DebriefHandlers {
   characterName: string;
   /** Opens the memory screen (phase 3). */
   openMemory?: () => void;
+  /** Phase 4: the talk's plan, to name the mission and the review items. */
+  missionTitle?: string;
+  reviewSaid?: Record<string, { said: string; correct: string }>;
+}
+
+/** Phase 4: mission result, expressions placed, review items of the challenge. */
+function planSections(d: Debrief, h: DebriefHandlers): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  if (d.mission) {
+    const m = d.mission;
+    out.push(
+      el(
+        'section',
+        { class: `plan-result mission-result ${m.passed ? 'passed' : 'failed'}` },
+        el('h3', {}, `Mission ${m.passed ? 'réussie ✓' : 'pas encore réussie'} · ${m.score}/100`),
+        h.missionTitle ? el('p', { class: 'muted small', text: h.missionTitle }) : null,
+        m.forbiddenSaid.length
+          ? el('p', {
+              class: 'error-text small',
+              text: `Mot interdit entendu : ${m.forbiddenSaid.map((w) => `« ${w} »`).join(', ')}.`,
+            })
+          : null,
+        m.feedbackFr ? el('p', { text: m.feedbackFr }) : null,
+      ),
+    );
+  }
+  if (d.expressions?.length) {
+    const used = d.expressions.filter((e) => e.used).length;
+    out.push(
+      el(
+        'section',
+        { class: 'plan-result' },
+        el('h3', { text: `Expressions placées : ${used} sur ${d.expressions.length}` }),
+        el(
+          'ul',
+          { class: 'goal-list' },
+          ...d.expressions.map((e) =>
+            el(
+              'li',
+              { 'data-used': String(e.used) },
+              el('span', { class: 'tick', 'aria-hidden': 'true', text: e.used ? '✓' : '○' }),
+              el('strong', { lang: 'en', text: e.en }),
+              ` — ${e.used ? (e.natural ? 'placée naturellement' : 'placée, mais un peu maladroitement') : 'pas placée'}`,
+              e.quote
+                ? el('div', { class: 'muted small', lang: 'en', text: `« ${e.quote} »` })
+                : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  if (d.reviews?.length) {
+    const label = { correct: 'bonne forme ✓', wrong: 'même faute', absent: 'pas venue' } as const;
+    out.push(
+      el(
+        'section',
+        { class: 'plan-result' },
+        el('h3', {
+          text: `Tes anciennes fautes : ${d.reviews.filter((r) => r.result === 'correct').length} sur ${d.reviews.length} réussies`,
+        }),
+        el(
+          'ul',
+          { class: 'goal-list' },
+          ...d.reviews.map((r) => {
+            const item = h.reviewSaid?.[r.cardId];
+            return el(
+              'li',
+              { 'data-result': r.result },
+              item
+                ? el(
+                    'span',
+                    { class: 'pair', lang: 'en' },
+                    el('span', { class: 'said', text: item.said }),
+                    ' → ',
+                    el('span', { class: 'correct', text: item.correct }),
+                  )
+                : null,
+              ` : ${label[r.result]}`,
+              r.quote
+                ? el('div', { class: 'muted small', lang: 'en', text: `« ${r.quote} »` })
+                : null,
+            );
+          }),
+        ),
+        el('p', {
+          class: 'muted small',
+          text: 'Les cartes de révision sont mises à jour : une forme réussie revient plus tard, une faute refaite revient vite.',
+        }),
+      ),
+    );
+  }
+  return out;
 }
 
 /** Renders the French debrief: summary, mistakes by type, vocabulary. */
 export function renderDebrief(root: HTMLElement, d: Debrief, h: DebriefHandlers): void {
   root.replaceChildren();
   if (d.summaryFr) root.append(el('p', { class: 'summary', text: d.summaryFr }));
+  root.append(...planSections(d, h));
   if (d.strengthsFr.length) {
     root.append(
       el('h3', { text: 'Ce qui était bien' }),
@@ -168,6 +262,23 @@ function mistakeCard(index: number, m: Mistake, h: DebriefHandlers): HTMLElement
 /** Plain-text version of the debrief, to copy into a message. */
 export function debriefText(d: Debrief): string {
   const lines = ['Bilan English Buddy', '', d.summaryFr, ''];
+  if (d.mission) {
+    lines.push(
+      `Mission : ${d.mission.passed ? 'réussie' : 'pas réussie'} (${d.mission.score}/100). ${d.mission.feedbackFr}`,
+      '',
+    );
+  }
+  if (d.expressions?.length) {
+    lines.push(
+      `Expressions placées : ${
+        d.expressions
+          .filter((e) => e.used)
+          .map((e) => e.en)
+          .join(', ') || 'aucune'
+      }`,
+      '',
+    );
+  }
   if (d.strengthsFr.length)
     lines.push('Ce qui était bien :', ...d.strengthsFr.map((s) => `- ${s}`), '');
   lines.push(`Fautes (${d.mistakes.length}) :`);

@@ -1,5 +1,6 @@
 import type { Debrief } from '../analysis/types';
 import type { Turn } from '../talk/transcript';
+import type { TalkPlan } from '../habit/plan';
 import { run } from './db';
 
 /**
@@ -23,6 +24,8 @@ export interface SavedTalk {
    * have none: the dashboard estimates it from their word count.
    */
   speakingMs?: number;
+  /** Phase 4: the mission, expressions and review items of the talk. */
+  plan?: TalkPlan;
   /** Talks pulled from the account have no transcript, only these counts. */
   cloudCounts?: { words: number; sentences: number };
 }

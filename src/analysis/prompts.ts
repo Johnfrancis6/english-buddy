@@ -1,3 +1,4 @@
+import { missionById } from '../habit/missions';
 import { SCALE_TEXT } from '../progress/level';
 import { MISTAKE_TYPES, type AnalysisContext, type AnalysisTurn, type Mistake } from './types';
 
@@ -40,7 +41,39 @@ Memory: ${ctx.characterName} will remember the learner in the next talks. In "me
 Known facts:
 ${ctx.knownFacts ?? '(nothing yet)'}
 
-In "talk_memory_fr", one or two French sentences on what you talked about and anything worth asking about next time (from ${ctx.characterName}'s point of view, third person for the learner).`;
+In "talk_memory_fr", one or two French sentences on what you talked about and anything worth asking about next time (from ${ctx.characterName}'s point of view, third person for the learner).${planInstructions(ctx)}`;
+}
+
+/** Phase 4: how to judge the mission, the expressions to place and the review items. */
+export function planInstructions(ctx: AnalysisContext): string {
+  const plan = ctx.plan;
+  if (!plan || plan.mode === 'free') return '';
+  const out: string[] = [];
+  const mission = missionById(plan.missionId);
+  if (mission) {
+    const avoid = mission.forbidden.length
+      ? ` The learner was not allowed to say ${mission.forbidden.map((w) => `"${w}"`).join(' or ')}: if they did, the mission is failed.`
+      : '';
+    out.push(
+      `Mission: the learner's goal was: ${mission.goalEn}${avoid} In "mission", say whether they clearly reached it ("passed"), give a score from 0 to 100 (goal reached, clarity, politeness and naturalness of their English; a mission reached with many basic mistakes is around 60, a smooth one 85 or more, a failed one below 50), and one or two French sentences of feedback ("feedback_fr").`,
+    );
+  }
+  if (plan.expressions.length) {
+    out.push(
+      `Expressions to place: the learner tried to use ${plan.expressions.map((e) => `"${e.en}"`).join(', ')}. In "expressions_used", for each one: "used" if the learner said it (any correct grammatical form counts, e.g. "got lost" for "get lost"), "natural" if it was used correctly and fitted the context, and "quote" with their words. Only the learner's lines count, never ${ctx.characterName}'s.`,
+    );
+  }
+  if (plan.reviews.length) {
+    out.push(
+      [
+        `Review items: in past talks the learner made these mistakes; ${ctx.characterName} tried to make them use the structures again. In "review_results", for each item: "correct" if the learner produced the right form in this talk, "wrong" if they made the same mistake again, "absent" if the structure did not come up. Quote their words.`,
+        ...plan.reviews.map(
+          (r) => `- item ${r.cardId}: they once said "${r.said}"; right form "${r.correct}".`,
+        ),
+      ].join('\n'),
+    );
+  }
+  return out.length ? `\n\n${out.join('\n\n')}` : '';
 }
 
 export function explainSystemPrompt(level = 'B1'): string {

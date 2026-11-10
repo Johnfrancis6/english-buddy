@@ -111,7 +111,8 @@ export async function seed(page: Page): Promise<void> {
       },
     ];
     await new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open('english-buddy', 2);
+      // No version: the page may already have upgraded the database (phase 4: v3).
+      const req = indexedDB.open('english-buddy');
       req.onupgradeneeded = () => {
         for (const s of ['talks', 'facts'])
           if (!req.result.objectStoreNames.contains(s))

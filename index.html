@@ -10,9 +10,10 @@
     <canvas id="stage" data-ready="false" role="img" aria-label="Scène 3D"></canvas>
 
     <header class="topbar">
-      <div class="brand">English Buddy <span class="chip">phase 3 · test</span></div>
+      <div class="brand">English Buddy <span class="chip">phase 4 · test</span></div>
       <div class="row tight">
         <button id="open-home" class="btn" type="button" hidden>Changer de scène</button>
+        <button id="open-map" class="btn" type="button">Missions</button>
         <button id="open-progress" class="btn" type="button">Mes progrès</button>
         <button id="open-memory" class="btn" type="button">Ce qu’ils savent de moi</button>
         <a class="btn" href="./lab.html">Labo transcription</a>
@@ -27,11 +28,30 @@
         Choisis un lieu et un personnage. Tu parles anglais à voix haute ; à la fin, tu reçois un
         bilan en français.
       </p>
+      <section id="today" class="today" aria-labelledby="today-title">
+        <h2 id="today-title" class="visually-hidden">Aujourd’hui</h2>
+        <p id="streak-line" class="streak-line" aria-live="polite"></p>
+        <div class="today-row">
+          <div class="today-text">
+            <strong id="challenge-title">Défi du jour</strong>
+            <span id="challenge-line" class="small muted"></span>
+          </div>
+          <button id="start-challenge" class="btn small" type="button">Lancer le défi</button>
+        </div>
+        <div class="today-row">
+          <div class="today-text">
+            <strong>Révisions</strong>
+            <span id="reviews-line" class="small muted"></span>
+          </div>
+          <button id="open-reviews" class="btn small" type="button">Réviser à voix haute</button>
+        </div>
+      </section>
       <h2>Le lieu</h2>
       <div id="scene-cards" class="cards scenes" role="group" aria-label="Lieux"></div>
       <h2>Le personnage</h2>
       <div id="character-cards" class="cards people" role="group" aria-label="Personnages"></div>
       <p id="home-about" class="about" aria-live="polite"></p>
+      <div id="home-plan" class="home-plan" aria-live="polite"></div>
       <p id="home-status" class="muted small" aria-live="polite"></p>
       <div class="row">
         <button id="enter" class="btn primary" type="button">Entrer dans la scène</button>
@@ -39,43 +59,52 @@
       </div>
     </section>
 
-    <details id="measures" class="panel measures">
-      <summary>Mesures de test</summary>
-      <dl>
-        <dt>État</dt>
-        <dd id="d-state">Chargement…</dd>
-        <dt>Délai médian</dt>
-        <dd>
-          <strong id="d-median">—</strong> <span id="d-count" class="muted">(0/10 tours)</span>
-        </dd>
-        <dt>Dernier délai</dt>
-        <dd id="d-last">—</dd>
-        <dt>Durée</dt>
-        <dd id="d-duration">00:00</dd>
-        <dt>Images/s</dt>
-        <dd id="d-fps">—</dd>
-        <dt>Geste</dt>
-        <dd id="d-gesture" class="muted">—</dd>
-        <dt>Micro</dt>
-        <dd>
-          <span class="meter"><span id="d-mic"></span></span>
-        </dd>
-        <dt>Modèle</dt>
-        <dd id="d-model" class="muted">—</dd>
-      </dl>
-      <p class="muted small">
-        Délai = temps entre la fin de ta phrase et le premier son du personnage. Objectif : moins de
-        1,5 s.
-      </p>
-      <div id="d-log" class="log" aria-live="polite"></div>
-      <div class="row tight">
-        <button id="copy-report" class="btn small" type="button">Copier le rapport</button>
-        <button id="lip-test" class="btn small" type="button" disabled>Tester les lèvres</button>
-        <button id="gesture-test" class="btn small" type="button" disabled>
-          Tester les gestes
-        </button>
-      </div>
-    </details>
+    <div class="side-left">
+      <details id="measures" class="panel measures">
+        <summary>Mesures de test</summary>
+        <dl>
+          <dt>État</dt>
+          <dd id="d-state">Chargement…</dd>
+          <dt>Délai médian</dt>
+          <dd>
+            <strong id="d-median">—</strong> <span id="d-count" class="muted">(0/10 tours)</span>
+          </dd>
+          <dt>Dernier délai</dt>
+          <dd id="d-last">—</dd>
+          <dt>Durée</dt>
+          <dd id="d-duration">00:00</dd>
+          <dt>Images/s</dt>
+          <dd id="d-fps">—</dd>
+          <dt>Geste</dt>
+          <dd id="d-gesture" class="muted">—</dd>
+          <dt>Micro</dt>
+          <dd>
+            <span class="meter"><span id="d-mic"></span></span>
+          </dd>
+          <dt>Modèle</dt>
+          <dd id="d-model" class="muted">—</dd>
+        </dl>
+        <p class="muted small">
+          Délai = temps entre la fin de ta phrase et le premier son du personnage. Objectif : moins
+          de 1,5 s.
+        </p>
+        <div id="d-log" class="log" aria-live="polite"></div>
+        <div class="row tight">
+          <button id="copy-report" class="btn small" type="button">Copier le rapport</button>
+          <button id="lip-test" class="btn small" type="button" disabled>Tester les lèvres</button>
+          <button id="gesture-test" class="btn small" type="button" disabled>
+            Tester les gestes
+          </button>
+        </div>
+      </details>
+      <section id="goals" class="panel goals" aria-labelledby="goals-title" hidden>
+        <div class="goals-head">
+          <h2 id="goals-title">Ta mission</h2>
+          <span id="goals-timer" class="chip timer" hidden></span>
+        </div>
+        <div id="goals-body"></div>
+      </section>
+    </div>
 
     <section
       id="transcript-panel"
@@ -155,6 +184,34 @@
       <div class="row">
         <button id="progress-close" class="btn primary" type="button">Fermer</button>
         <button id="progress-memory" class="btn" type="button">Ce qu’ils savent de moi</button>
+      </div>
+    </dialog>
+
+    <dialog id="reviews" class="panel dialog reviews" aria-labelledby="reviews-title">
+      <div class="dialog-head">
+        <h2 id="reviews-title" tabindex="-1">Révisions à voix haute</h2>
+        <span id="reviews-meta" class="muted small"></span>
+      </div>
+      <div id="reviews-body" aria-live="polite"></div>
+      <div class="row">
+        <button id="reviews-close" class="btn" type="button">Fermer</button>
+      </div>
+    </dialog>
+
+    <dialog id="map" class="panel dialog map" aria-labelledby="map-title">
+      <div class="dialog-head">
+        <h2 id="map-title" tabindex="-1">Carte des missions</h2>
+        <span id="map-meta" class="muted small"></span>
+      </div>
+      <p class="muted small">
+        Une mission, c’est un but à atteindre en parlant. À la fin, le bilan dit si elle est
+        réussie, avec une note sur 100. Les missions plus difficiles se débloquent quand tes
+        résultats montent.
+      </p>
+      <div id="map-body"></div>
+      <div class="row">
+        <button id="map-close" class="btn primary" type="button">Fermer</button>
+        <button id="map-free" class="btn" type="button">Parler librement, sans mission</button>
       </div>
     </dialog>
 

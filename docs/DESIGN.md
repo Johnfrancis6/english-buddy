@@ -27,6 +27,7 @@ WCAG formula on 2026-11-10.
 | `--accent` | `#b34a17` | Primary buttons, links, the selected card | white text 5.4 |
 | `--accent-soft` | `rgba(179, 74, 23, 0.12)` | Selected card background, focus halo | — |
 | `--success` | `#2e7d32` | Correct form, "kept", delay on target | 5.1 on white |
+| `--success-soft` | `rgba(46, 125, 50, 0.12)` | Background of success chips ("réussie ✓", challenge over) | `--success` text on it ≥ 4.5 |
 | `--danger` | `#a32d1c` | Errors, the learner's wrong form, destructive links | 6.9 |
 | `--info` | `#2f5d8a` | The learner's name in transcripts, "Pourquoi ?" box tint | 6.6 |
 | `--heat-1` … `--heat-4` | `#f3dccf`, `#e4b49c`, `#c67751`, `#b34a17` | Sequential steps of the accent for counts (progress table). The number is always written in the cell | `--ink` on 1–3 (≥ 4.7), white on 4 (5.4) |
@@ -157,6 +158,11 @@ default**. They stay reachable in one click and never distract a learner.
 | Memory ("Ce qu'ils savent de moi") | `index.html` `#memory` | Facts grouped by subject, each with "Corriger" (quiet) and "Effacer" (danger link); "Ajouter" folded; "Fermer" primary |
 | Progress ("Mes progrès") | `index.html` `#progress` | Level box (band + "estimation" chip + 4 skill bars with B1/B2/C1 ticks), 4 tiles, mistakes × weeks table, speaking-time bars, list of talks |
 | Settings → account | `index.html` `#settings` | "Compte (facultatif)" after the keys; says plainly when accounts are off |
+| Home → today (phase 4) | `index.html` `#today` | Box on `--surface-raised` under the lead: streak line (bold, tabular numbers), "Défi du jour" and "Révisions" rows, each with one secondary small button; the mission line under the character cards |
+| Goals panel (phase 4) | `index.html` `#goals` | Left column under the folded measures, never over the face: title, timer chip (challenge only), mission goal, "Tu avais dit « … »" items (wrong form in `--danger`, never the answer), expressions with ○/✓ and a hidden word for screen readers, today's speaking time |
+| Reviews ("Révisions à voix haute") | `index.html` `#reviews` | One card at a time; "Voir la réponse" is the primary action; four grade buttons (secondary, small); "Retirer cette carte" danger link; "Fermer" secondary |
+| Mission map | `index.html` `#map` | Three columns (places) × three rows (levels) of `.card.mission`; locked cards are disabled, on `--bg`, and say what opens them in text; "Fermer" primary |
+| Debrief → plan (phase 4) | `#debrief` `.plan-result` | After the summary: mission (left border `--success` / `--danger` + the words "réussie" / "pas encore réussie"), expressions placed, old mistakes reviewed |
 
 ### Charts (phase 3)
 

@@ -44,6 +44,23 @@ import { buildLearnerProfile } from './progress/profile';
 import { buildProgress } from './progress/stats';
 import { renderMemory } from './ui/memoryView';
 import { renderProgress } from './ui/progressView';
+import { renderReviews } from './ui/reviewView';
+import { renderMap } from './ui/mapView';
+import { GoalsView } from './ui/goalsView';
+import {
+  buildChallenge,
+  CHALLENGE_MINUTES,
+  FREE_PLAN,
+  missionPlan,
+  planPrompt,
+  type TalkPlan,
+} from './habit/plan';
+import { missionById, unlockMap, type Mission } from './habit/missions';
+import { computeStreak, dayKey } from './habit/streak';
+import { challengeDoneToday, missionRecords, nextDueFr } from './habit/today';
+import { dueCards, draftsFromDebrief, type ReviewCard } from './reviews/cards';
+import { addDrafts, applyTalk, gradeCard, listCards, putCard } from './storage/cards';
+import { talkStats } from './progress/stats';
 import {
   cloudConfig,
   isProjectUrl,
@@ -136,6 +153,10 @@ let member: CastMember = castMember(settings.character);
 let inScene = false;
 let director: GestureDirector | null = null;
 let firstAnswer = true;
+/** What the next talk is for: free chat, a mission, or the daily challenge. */
+let plan: TalkPlan = FREE_PLAN;
+const planMission = () => missionById(plan.missionId);
+const goals = new GoalsView($('goals'), $('goals-body'), $('goals-title'), $('goals-timer'));
 
 function applyCharacterLook(): void {
   document.body.style.setProperty('--buddy', member.colour);
@@ -212,6 +233,7 @@ function renderHome(): void {
         if (sceneId === x.id) return;
         sceneId = x.id;
         member = castMember(x.host);
+        if (planMission()?.scene !== x.id) plan = FREE_PLAN;
         choose();
       }),
     ),
@@ -237,6 +259,82 @@ function markChoice(): void {
   }
   $('home-about').textContent = `${member.character.name} : ${member.blurbFr}`;
   enterBtn.textContent = `Entrer : ${sceneInfo(sceneId).labelFr.toLowerCase()} avec ${member.character.name}`;
+  renderHomePlan();
+}
+
+/** The mission line of the home screen. */
+function renderHomePlan(): void {
+  const box = $('home-plan');
+  const m = planMission();
+  const pickBtn = el('button', {
+    class: 'btn quiet small',
+    type: 'button',
+    text: m ? 'Changer' : 'Choisir une mission',
+  });
+  pickBtn.addEventListener('click', () => void openMap());
+  if (plan.mode === 'mission' && m) {
+    const drop = el('button', { class: 'link', type: 'button', text: 'Sans mission' });
+    drop.addEventListener('click', () => {
+      plan = FREE_PLAN;
+      renderHomePlan();
+    });
+    box.replaceChildren(
+      el(
+        'p',
+        {},
+        el('span', { class: 'chip', text: `Mission · niveau ${m.tier}` }),
+        ' ',
+        el('strong', { text: m.titleFr }),
+      ),
+      el('p', { class: 'small muted', text: m.goalFr }),
+      el('div', { class: 'row tight' }, pickBtn, drop),
+    );
+  } else {
+    box.replaceChildren(
+      el(
+        'p',
+        { class: 'small muted' },
+        'Conversation libre. Tu peux aussi te donner un but : ',
+        pickBtn,
+      ),
+    );
+  }
+}
+
+/** Streak, daily challenge and reviews, on the home screen. */
+async function renderToday(): Promise<void> {
+  const now = Date.now();
+  const [talks, cards] = await Promise.all([
+    listTalks().catch(() => [] as SavedTalk[]),
+    listCards().catch(() => [] as ReviewCard[]),
+  ]);
+  const streak = computeStreak(
+    talks.map((t) => ({ at: t.startedAt, speakingMs: talkStats(t).speakingMs })),
+    now,
+  );
+  const today = Math.floor(streak.todayMs / 60_000);
+  const streakText = streak.days
+    ? `🔥 Série : ${streak.days} jour${streak.days > 1 ? 's' : ''}`
+    : '🔥 Pas encore de série';
+  const todayText = streak.todayDone
+    ? 'aujourd’hui compte ✓'
+    : `aujourd’hui : ${today} min de parole sur 3`;
+  const joker = streak.jokerLeft ? 'joker de la semaine disponible' : 'joker de la semaine utilisé';
+  $('streak-line').textContent = `${streakText} · ${todayText} · ${joker}`;
+  $('streak-line').title =
+    `Un jour compte quand tu as vraiment parlé au moins 3 minutes. Un jour manqué par semaine est couvert par le joker. Record : ${streak.best} jour${streak.best > 1 ? 's' : ''}.`;
+  const due = dueCards(cards, now);
+  const challenge = buildChallenge(cards, sceneId, now);
+  const done = challengeDoneToday(talks, now);
+  $('challenge-line').textContent =
+    `${CHALLENGE_MINUTES} min avec ${member.character.name} · ${challenge.reviews.length ? `${challenge.reviews.length} faute${challenge.reviews.length > 1 ? 's' : ''} à reprendre` : 'aucune faute due'} · ${challenge.expressions.length} expressions à placer${done ? ' · déjà fait aujourd’hui ✓' : ''}`;
+  $('start-challenge').textContent = done ? 'Refaire le défi' : 'Lancer le défi';
+  $('reviews-line').textContent = cards.length
+    ? `${due.length} carte${due.length > 1 ? 's' : ''} à revoir · ${cards.filter((c) => !c.suspended).length} en tout · prochaine : ${nextDueFr(cards, now)}`
+    : 'Tes fautes et tes mots deviendront des cartes après tes bilans.';
+  $<HTMLButtonElement>('open-reviews').disabled = due.length === 0;
+  $('today').dataset.due = String(due.length);
+  $('today').dataset.streak = String(streak.days);
 }
 
 /** A card was picked: update the preview and remember the choice. */
@@ -258,7 +356,9 @@ function openHome(): void {
   controls.hidden = true;
   transcriptPanel.hidden = true;
   $('open-home').hidden = true;
+  goals.hide();
   markChoice();
+  void renderToday();
 }
 
 function enterScene(): void {
@@ -274,11 +374,34 @@ function enterScene(): void {
   talkHint.textContent = `${member.character.name} arrive…`;
   renderSourceLabel();
   stage.walkIn();
-  log(`Scène : ${sceneInfo(sceneId).labelFr}, avec ${member.character.name}`);
+  goals.show(plan, planMission(), member.character.name);
+  goals.tick(plan.mode === 'challenge' ? (plan.minutes ?? CHALLENGE_MINUTES) * 60_000 : null, 0);
+  void todaySpeakingMs().then((ms) => (todayBaseMs = ms));
+  log(
+    `Scène : ${sceneInfo(sceneId).labelFr}, avec ${member.character.name}${plan.mode === 'challenge' ? ' (défi du jour)' : planMission() ? ` (mission « ${planMission()!.titleFr} »)` : ''}`,
+  );
   if (!loadSettings().apiKey) openSettings();
 }
 
 enterBtn.addEventListener('click', enterScene);
+$('start-challenge').addEventListener('click', () => {
+  void listCards()
+    .catch(() => [] as ReviewCard[])
+    .then((cards) => {
+      plan = buildChallenge(cards, sceneId, Date.now());
+      enterScene();
+    });
+});
+
+/** Speaking time already saved today (for the streak line in the talk). */
+let todayBaseMs = 0;
+async function todaySpeakingMs(): Promise<number> {
+  const talks = await listTalks().catch(() => [] as SavedTalk[]);
+  const today = dayKey(Date.now());
+  return talks
+    .filter((t) => dayKey(t.startedAt) === today)
+    .reduce((n, t) => n + talkStats(t).speakingMs, 0);
+}
 $('open-home').addEventListener('click', openHome);
 $('home-debrief').addEventListener('click', () => debriefBtn.click());
 
@@ -301,6 +424,8 @@ interface Talk {
   speakingMs: number;
   /** What the character was told about the learner at the start. */
   profile: LearnerProfile;
+  /** Phase 4: mission, review items, expressions to place. */
+  plan: TalkPlan;
 }
 let talk: Talk | null = null;
 const transcriptView = new TranscriptView(transcriptBody);
@@ -339,7 +464,10 @@ const voice = new GeminiLiveSession(player, latency, {
   onTranscript: (who, text) => {
     talk?.transcript.addLive(who, text);
     if (who === 'buddy') director?.buddySays(text, stageTime());
-    else director?.learnerSays(text, stageTime());
+    else {
+      director?.learnerSays(text, stageTime());
+      if (talk) goals.learnerText(learnerText(talk), planMission());
+    }
   },
   onTurnComplete: (interrupted) => {
     director?.buddyDone();
@@ -364,11 +492,18 @@ async function startTalk(): Promise<void> {
   const voiceName = settings.voiceOverride || member.voice;
   startBtn.disabled = true; // no second start while the profile is read
   const profile = await learnerProfile(member.id).finally(() => (startBtn.disabled = false));
+  const mission = planMission();
   voice.configure({
     ...settings,
     voice: voiceName,
-    systemPrompt: buildSystemPrompt(character, profile, sceneId),
-    greeting: character.greeting,
+    systemPrompt: buildSystemPrompt(
+      character,
+      profile,
+      sceneId,
+      planPrompt(plan, mission),
+      mission?.roleEn,
+    ),
+    greeting: mission?.greetingEn ?? character.greeting,
   });
   director = new GestureDirector({ fistBump: member.fistBump }, (g) => stage.play(g));
   firstAnswer = true;
@@ -391,11 +526,27 @@ async function startTalk(): Promise<void> {
     ended: false,
     speakingMs: 0,
     profile,
+    plan,
   };
+  goals.show(plan, mission, character.name);
+  todayBaseMs = await todaySpeakingMs();
   transcriptView.clear();
   renderSourceLabel();
   await voice.start();
 }
+
+/** Everything the learner said so far in this talk. */
+const learnerText = (t: Talk) =>
+  t.transcript.turns
+    .filter((x) => x.who === 'you')
+    .map((x) => x.text)
+    .join('\n');
+
+goals.onPlaced = (en) => {
+  log(`Expression placée : « ${en} »`);
+  // A small sign that the character noticed (the voice reacts too, by prompt).
+  stage.play(member.fistBump ? 'fistBump' : 'nod');
+};
 
 /** What the character knows before the talk: level, frequent mistakes, memory. */
 async function learnerProfile(id: CastMember['id']): Promise<LearnerProfile> {
@@ -478,6 +629,14 @@ setInterval(() => {
   canvas.dataset.fps = stage.fps.toFixed(1);
   const g = stage.activeGestures;
   dGesture.textContent = g.length ? g.join(', ') : '—';
+  if (inScene && plan.mode !== 'free') {
+    const live = talk && !talk.ended ? talk : null;
+    const total = (plan.minutes ?? CHALLENGE_MINUTES) * 60_000;
+    goals.tick(
+      plan.mode === 'challenge' ? (live ? total - (Date.now() - live.startedAt) : total) : null,
+      todayBaseMs + (live?.speakingMs ?? 0),
+    );
+  }
 }, 500);
 
 /** Plays every gesture once, to check them without a key. */
@@ -520,7 +679,10 @@ async function finishTalk(t: Talk): Promise<void> {
     debrief: null,
     why: {},
     speakingMs: Math.round(t.speakingMs),
+    ...(t.plan.mode !== 'free' ? { plan: t.plan } : {}),
   };
+  // The challenge is played once; a mission stays chosen for another try.
+  if (t.plan.mode === 'challenge') plan = FREE_PLAN;
   await persist(current);
   await runDebrief(current);
 }
@@ -554,18 +716,37 @@ async function runDebrief(s: SavedTalk): Promise<void> {
       characterDescription: who.shortDescription,
       transcriptSource: source === 'live' ? 'Gemini Live' : SOURCE_LABEL[source],
       knownFacts: factsForAnalyzer(facts),
+      plan: s.plan,
     });
     log(`Bilan prêt (${s.debrief.mistakes.length} fautes, modèle ${s.debrief.model})`);
     await persist(s);
     await remember(s, facts);
-    void autoSync();
     if (current?.id === s.id) showDebrief(s);
+    // After the debrief is on screen: the cards are not needed to read it.
+    await updateCards(s);
+    void autoSync();
   } catch (err) {
     const e = asProviderError(err, 'gemini');
     debriefStatus.textContent = `${e.french} Ta conversation est gardée : tu peux réessayer.`;
     debriefStatus.className = 'status error-text';
     $('debrief-retry').hidden = false;
     log(`Bilan impossible : ${e.detail}`);
+  }
+}
+
+/** Grades the cards this talk reviewed, then adds its new mistakes and words. */
+async function updateCards(s: SavedTalk): Promise<void> {
+  if (!s.debrief) return;
+  try {
+    const now = Date.now();
+    const graded = await applyTalk(s.id, s.debrief, now);
+    const added = await addDrafts(
+      draftsFromDebrief(s.debrief, s.id, s.character, now),
+      await listCards(),
+    );
+    log(`Révisions : ${graded.length} carte(s) notée(s) par ce bilan, ${added} nouvelle(s)`);
+  } catch (err) {
+    log(`Cartes de révision non mises à jour : ${String(err)}`);
   }
 }
 
@@ -601,6 +782,10 @@ function showDebrief(s: SavedTalk): void {
     renderDebrief(debriefBody, s.debrief, {
       characterName: who.character.name,
       known: s.why,
+      missionTitle: missionById(s.plan?.missionId)?.titleFr,
+      reviewSaid: Object.fromEntries(
+        (s.plan?.reviews ?? []).map((r) => [r.cardId, { said: r.said, correct: r.correct }]),
+      ),
       openMemory: () => void openMemory(),
       why: async (index, mistake) => {
         const text = await analyzer()
@@ -761,6 +946,105 @@ $('memory-clear').addEventListener('click', () => {
       () => (memoryStatus.textContent = 'Effacement impossible.'),
     );
 });
+
+// ------------------------------------------------------- reviews + map
+const reviewsDialog = $<HTMLDialogElement>('reviews');
+const mapDialog = $<HTMLDialogElement>('map');
+
+async function openReviews(): Promise<void> {
+  const now = Date.now();
+  const cards = await listCards().catch(() => [] as ReviewCard[]);
+  const due = dueCards(cards, now);
+  $('reviews-meta').textContent = due.length
+    ? `${due.length} carte${due.length > 1 ? 's' : ''} à revoir aujourd’hui`
+    : '';
+  renderReviews(
+    $('reviews-body'),
+    due,
+    { total: cards.filter((c) => !c.suspended).length, nextDueFr: nextDueFr(cards, now) },
+    {
+      grade: async (card, grade) => {
+        const next = await gradeCard(card, grade, Date.now());
+        Object.assign(card, next);
+      },
+      remove: async (card) => {
+        card.suspended = true;
+        await putCard(card);
+      },
+      done: (n) => {
+        log(`Révisions à voix haute : ${n} carte(s)`);
+        void listCards().then((all) => {
+          $('reviews-body')
+            .querySelector('.review-end .muted')
+            ?.replaceChildren(
+              `${all.filter((c) => !c.suspended).length} cartes en tout. Prochaine révision : ${nextDueFr(all, Date.now())}. Les cartes reviennent au bon moment pour ne pas les oublier (méthode FSRS).`,
+            );
+        });
+        void renderToday();
+      },
+    },
+  );
+  if (!reviewsDialog.open) reviewsDialog.showModal();
+}
+
+async function openMap(): Promise<void> {
+  const talks = await listTalks().catch(() => [] as SavedTalk[]);
+  const overall = buildProgress(talks, Date.now()).level?.overall ?? null;
+  const cells = unlockMap(missionRecords(talks), overall);
+  const passed = cells.filter((c) => c.record?.passed).length;
+  $('map-meta').textContent =
+    `${passed} réussie${passed > 1 ? 's' : ''} sur ${cells.length}${overall !== null ? ` · niveau estimé ${overall}/100` : ''}`;
+  renderMap($('map-body'), cells, plan.missionId, (m: Mission) => {
+    plan = missionPlan(m);
+    mapDialog.close();
+    if (voice.state !== 'idle' && voice.state !== 'error') return;
+    if (inScene) openHome();
+    sceneId = m.scene;
+    if (member.id !== m.host) member = castMember(m.host);
+    choose();
+    $('home-plan').scrollIntoView({ block: 'nearest' });
+  });
+  if (!mapDialog.open) {
+    mapDialog.showModal();
+    $('map-title').focus();
+    mapDialog.scrollTop = 0;
+  }
+}
+
+$('open-reviews').addEventListener('click', () => void openReviews());
+$('reviews-close').addEventListener('click', () => reviewsDialog.close());
+reviewsDialog.addEventListener('close', () => void renderToday());
+$('open-map').addEventListener('click', () => void openMap());
+$('map-close').addEventListener('click', () => mapDialog.close());
+$('map-free').addEventListener('click', () => {
+  plan = FREE_PLAN;
+  mapDialog.close();
+  renderHomePlan();
+});
+
+/**
+ * Talks debriefed before phase 4 have no cards yet: create them once, due
+ * from the day after each talk (most are due at once).
+ */
+async function backfillCards(): Promise<void> {
+  try {
+    const cards = await listCards();
+    if (cards.length) return;
+    const talks = await listTalks();
+    const drafts = talks
+      .filter((t) => t.debrief)
+      .sort((a, b) => a.startedAt - b.startedAt)
+      .flatMap((t) => draftsFromDebrief(t.debrief!, t.id, t.character, t.startedAt));
+    if (!drafts.length) return;
+    const t0 = performance.now();
+    const added = await addDrafts(drafts, []);
+    log(
+      `Révisions : ${added} carte(s) créée(s) à partir de tes anciens bilans (${Math.round(performance.now() - t0)} ms)`,
+    );
+  } catch (err) {
+    log(`Cartes de révision illisibles : ${String(err)}`);
+  }
+}
 
 // ------------------------------------------------- optional account (cloud)
 const pageUrl = () => `${location.origin}${location.pathname}`;
@@ -1032,7 +1316,7 @@ $('copy-report').addEventListener('click', () => {
   const turns: Turn[] = talk?.transcript.turns ?? [];
   const learner = turns.filter((x) => x.who === 'you' && x.text.trim());
   const report = [
-    'English Buddy — rapport de test phase 3',
+    'English Buddy — rapport de test phase 4',
     `Date : ${new Date().toLocaleString('fr-FR')}`,
     `Conversation lancée avec : ${sessionLabel}`,
     `État : ${dState.textContent}`,
@@ -1045,6 +1329,7 @@ $('copy-report').addEventListener('click', () => {
     `Transcription : ${talk ? SOURCE_LABEL[talk.source] : '—'} ; échecs du 2ᵉ reconnaisseur : ${talk?.transcribeErrors ?? 0}`,
     `Bilan : ${current?.debrief ? `${current.debrief.mistakes.length} fautes, modèle ${current.debrief.model}` : 'aucun'}`,
     `Profil donné : niveau ${talk?.profile.level ?? '—'}${talk?.profile.levelMeasured ? ' (estimé)' : ''}, mémoire ${talk?.profile.memory ? 'oui' : 'vide'} ; temps de parole mesuré : ${talk ? formatDuration(talk.speakingMs) : '—'}`,
+    `Plan : ${talk ? `${talk.plan.mode}${talk.plan.missionId ? ` (${talk.plan.missionId})` : ''}, ${talk.plan.reviews.length} faute(s) à reprendre, ${talk.plan.expressions.length} expression(s), ${goals.placedCount} placée(s) d’après le texte` : '—'}`,
     `Navigateur : ${navigator.userAgent}`,
     '--- Journal ---',
     ...logLines,
@@ -1078,5 +1363,7 @@ renderHome();
 measures.hidden = true;
 stage.setViewShift(homeShift());
 void showCharacter();
+void renderToday();
+void backfillCards().then(() => renderToday());
 // The other characters download in the background once the first is shown.
 setTimeout(() => CAST.forEach((c) => stage.preload(modelUrl(c))), 4000);

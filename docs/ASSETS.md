@@ -53,3 +53,7 @@ animation file is used.
 | `three` | MIT |
 | `@pixiv/three-vrm` | MIT |
 | `@google/genai` | Apache-2.0 |
+| `ts-fsrs` 6.0.0 (phase 4, spaced repetition) | MIT |
+| `@open-spaced-repetition/srs-kit` 1.0.0 (dependency of `ts-fsrs`) | BSD-3-Clause |
+
+Phase 4 content (missions, expressions to place) is written for this project.
