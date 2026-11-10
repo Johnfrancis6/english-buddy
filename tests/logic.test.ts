@@ -62,6 +62,13 @@ describe('latency', () => {
     expect(t.count).toBe(0);
   });
 
+  it('discards impossible delays caused by overlapping speech', () => {
+    const t = new LatencyTracker();
+    const last = speak(t, 1000, 800);
+    expect(t.onModelAudioStart(last + 30)).toBeNull();
+    expect(t.count).toBe(0);
+  });
+
   it('keeps the last 10 samples only', () => {
     const t = new LatencyTracker();
     let now = 0;

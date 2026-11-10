@@ -10,6 +10,12 @@ export interface LatencyOptions {
   noiseFactor?: number;
   /** Minimum voiced time before a turn counts as real speech. */
   minVoicedMs?: number;
+  /**
+   * Samples below this are discarded: the server waits at least 500 ms of
+   * silence, so a shorter value means Jake started while the learner was
+   * still making sound (overlap), not a real answer delay.
+   */
+  minSampleMs?: number;
   /** Samples above this are discarded (the learner simply stayed silent). */
   maxSampleMs?: number;
   window?: number;
@@ -26,6 +32,7 @@ export class LatencyTracker {
   private readonly minThreshold: number;
   private readonly noiseFactor: number;
   private readonly minVoicedMs: number;
+  private readonly minSampleMs: number;
   private readonly maxSampleMs: number;
   private readonly window: number;
   /** Recent frame levels; their minimum estimates the background noise. */
@@ -39,6 +46,7 @@ export class LatencyTracker {
     this.minThreshold = o.minThreshold ?? 0.012;
     this.noiseFactor = o.noiseFactor ?? 3;
     this.minVoicedMs = o.minVoicedMs ?? 200;
+    this.minSampleMs = o.minSampleMs ?? 200;
     this.maxSampleMs = o.maxSampleMs ?? 10_000;
     this.window = o.window ?? 10;
   }
@@ -73,7 +81,7 @@ export class LatencyTracker {
     this.lastVoiceAt = null;
     if (lastVoiceAt === null || voicedMs < this.minVoicedMs) return null;
     const sample = nowMs - lastVoiceAt;
-    if (sample <= 0 || sample > this.maxSampleMs) return null;
+    if (sample < this.minSampleMs || sample > this.maxSampleMs) return null;
     this.samples.push(sample);
     if (this.samples.length > this.window) this.samples.shift();
     return sample;

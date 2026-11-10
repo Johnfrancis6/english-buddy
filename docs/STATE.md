@@ -73,6 +73,7 @@ Ce qui est faible :
 | 2026-11-09 | Cadrage | Brief, décisions, état | — |
 | 2026-11-09 | Phase 0 | Squelette Vite/TS, personnage VRM (regard, clignement, repos), voix Gemini Live avec clé du navigateur, lèvres synchronisées, mesure du délai, messages d'erreur, déploiement Pages, guide de test. Conversation réelle non testée (pas de clé en session) | Déploiement vert, « l'essai marche » (2026-11-10). Mesures détaillées à rapporter |
 | 2026-11-10 | Phase 0 (retouche) | Réglage « Ton rythme de parole » : silence de fin de tour au choix (0,5 / 0,9 / 1,5 s) | En attente |
+| 2026-11-10 | Phase 0 (mesure) | Rapport de Franco (Firefox 159, gemini-3.8-live, clé gratuite) : délai médian **0,96 s** sur 10 tours, 1 min 55 sans erreur. Deux faux délais (0,02 et 0,04 s) : la mesure ignore désormais les valeurs < 0,2 s | Reste à tester : 10 minutes, interruption, rythme de parole |
 
 ## Points ouverts
 
