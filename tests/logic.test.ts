@@ -67,6 +67,7 @@ describe('latency', () => {
     const last = speak(t, 1000, 800);
     expect(t.onModelAudioStart(last + 30)).toBeNull();
     expect(t.count).toBe(0);
+    expect(t.overlaps).toBe(1);
   });
 
   it('keeps the last 10 samples only', () => {

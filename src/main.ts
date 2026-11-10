@@ -45,6 +45,9 @@ let settings = loadSettings();
 let characterReady = false;
 let sessionStartedAt: number | null = null;
 const logLines: string[] = [];
+let overlapsSeen = 0;
+/** What the running (or last) conversation was started with. */
+let sessionLabel = '—';
 
 // ---------------------------------------------------------------- 3D stage
 const stage = new Stage(canvas);
@@ -74,6 +77,10 @@ const voice = new GeminiLiveSession(player, latency, {
   onError: showError,
   onModelTurnStart: (ms) => {
     if (ms !== null) log(`Délai de ce tour : ${formatMs(ms)}`);
+    else if (latency.overlaps > overlapsSeen) {
+      log(`Jake a pris la parole pendant que tu parlais encore (${latency.overlaps} fois)`);
+    }
+    overlapsSeen = latency.overlaps;
     renderLatency();
   },
   onMicLevel: (rms, voiced) => {
@@ -93,7 +100,9 @@ async function startTalk(): Promise<void> {
   hideError();
   settings = loadSettings();
   voice.configure(settings);
-  dModel.textContent = `${settings.model} · voix ${settings.voice} · pause ${settings.pauseMs} ms`;
+  sessionLabel = `${settings.model} · voix ${settings.voice} · pause ${settings.pauseMs} ms`;
+  dModel.textContent = sessionLabel;
+  overlapsSeen = 0;
   transcriptEl.replaceChildren();
   await voice.start();
 }
@@ -278,17 +287,23 @@ $('copy-report').addEventListener('click', () => {
   const report = [
     'English Buddy — rapport de test phase 0',
     `Date : ${new Date().toLocaleString('fr-FR')}`,
-    `Modèle : ${settings.model} · voix ${settings.voice} · pause ${settings.pauseMs} ms`,
+    `Conversation lancée avec : ${sessionLabel}`,
     `État : ${dState.textContent}`,
     `Délai médian : ${dMedian.textContent} ${dCount.textContent}`,
     `Dernier délai : ${dLast.textContent}`,
+    `Jake a parlé pendant que tu parlais encore : ${latency.overlaps} fois`,
     `Durée affichée : ${dDuration.textContent}`,
     `Navigateur : ${navigator.userAgent}`,
     '--- Journal ---',
     ...logLines,
   ].join('\n');
   void navigator.clipboard.writeText(report).then(
-    () => log('Rapport copié : colle-le dans ta réponse'),
+    () => {
+      log('Rapport copié : colle-le dans ta réponse');
+      const btn = $('copy-report');
+      btn.textContent = 'Copié ✓';
+      setTimeout(() => (btn.textContent = 'Copier le rapport'), 2000);
+    },
     () => log('Copie impossible : sélectionne le journal à la main'),
   );
 });

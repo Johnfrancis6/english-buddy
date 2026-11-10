@@ -41,6 +41,8 @@ export class LatencyTracker {
   private voicedMs = 0;
   private lastVoiceAt: number | null = null;
   private samples: number[] = [];
+  /** Times the model started while the learner was still making sound. */
+  overlaps = 0;
 
   constructor(o: LatencyOptions = {}) {
     this.minThreshold = o.minThreshold ?? 0.012;
@@ -81,7 +83,11 @@ export class LatencyTracker {
     this.lastVoiceAt = null;
     if (lastVoiceAt === null || voicedMs < this.minVoicedMs) return null;
     const sample = nowMs - lastVoiceAt;
-    if (sample < this.minSampleMs || sample > this.maxSampleMs) return null;
+    if (sample < this.minSampleMs) {
+      this.overlaps++;
+      return null;
+    }
+    if (sample > this.maxSampleMs) return null;
     this.samples.push(sample);
     if (this.samples.length > this.window) this.samples.shift();
     return sample;
@@ -98,6 +104,7 @@ export class LatencyTracker {
   }
   reset(): void {
     this.samples = [];
+    this.overlaps = 0;
     this.voicedMs = 0;
     this.lastVoiceAt = null;
   }
