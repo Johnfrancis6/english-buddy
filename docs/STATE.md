@@ -1,28 +1,66 @@
 # État du projet — English Buddy
 
-Dernière mise à jour : 2026-11-09 (fin de la construction de la phase 0).
+Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 1).
 
 ## Où on en est
 
-- **Phase 0 validée par Franco le 2026-11-10** (feu vert pour la phase 1).
-- Résultats mesurés avec sa clé gratuite (`gemini-3.8-live`) : 11 min 43
-  sans coupure ni refus ; délai médian 1,0 à 1,4 s. Les deux rythmes
-  restent au choix : « Rapide » (0,5 s, par défaut) pour une discussion
-  réactive, « Posé » (0,9 s) quand Franco veut finir ses phrases
-  tranquillement.
-- Lien de test : <https://johnfrancis6.github.io/english-buddy/>.
-- **Prochaine étape : phase 1** (conversation pédagogique), dans une
-  nouvelle session.
+- Phase 0 validée par Franco le 2026-11-10 ; pull request n° 1 fusionnée.
+- **Phase 1 construite** (conversation pédagogique), branche `phase-1`,
+  **en attente du test de Franco** avec le guide
+  [docs/tests/phase-1.md](tests/phase-1.md).
+- Lien de test : <https://johnfrancis6.github.io/english-buddy/> (et le labo :
+  <https://johnfrancis6.github.io/english-buddy/lab.html>).
+- Prochaine étape : retour de Franco (labo transcription, conversation,
+  bilan), puis go / no-go pour la phase 2.
 
 ## Ce que Franco doit faire maintenant
 
-- [ ] Fusionner la pull request
-      <https://github.com/Johnfrancis6/english-buddy/pull/1> (`phase-0` →
-      `main`) : bouton vert **Merge pull request**, puis **Confirm merge**.
-- [ ] Ouvrir une nouvelle session pour la phase 1 (voir « Prochaine
-      session »).
+- [ ] (Conseillé) Créer une clé Groq gratuite : étapes dans le guide, test 1a.
+- [ ] Suivre [docs/tests/phase-1.md](tests/phase-1.md) et renvoyer : résultats
+      du labo, rapport, bilan copié, remarques, go / no-go.
 
-## Auto-critique de la phase 0
+## Auto-critique de la phase 1
+
+Ce qui marche (mesuré dans la session de construction, avec Google et Groq
+**simulés**) :
+
+- Le prompt complet de Jake part dans la configuration Live ; le texte
+  s'affiche tour par tour ; les fautes et le « Pourquoi ? » s'affichent ;
+  la conversation et le bilan reviennent après rechargement (IndexedDB) ;
+  avec Groq, son texte remplace celui de Gemini et c'est lui qui va au bilan.
+- Le labo écrit la même prise de son avec 4 sources et classe chaque faute
+  (gardée / corrigée en silence / mal entendue).
+- Mesuré contre les vrais serveurs, sans clé : CORS autorisé par Groq et
+  Google ; `responseJsonSchema` reconnu par l'API `v1beta` ; erreur de fausse
+  clé Groq = 401 `invalid_api_key`.
+- 48 tests de logique, 4 tests Playwright, lint : au vert.
+
+Ce qui est **supposé, pas mesuré** (aucune clé dans la session) :
+
+- Quelle source garde le mieux les fautes : **aucune recommandation mesurée**.
+  Par défaut on reste sur Gemini Live (pas de clé en plus). Mon pari, à
+  vérifier par le labo : Groq Whisper garde plus de fautes que Gemini Live,
+  et Gemini Flash « mot à mot » en corrige le plus (un modèle de langage a
+  tendance à réparer les phrases), malgré la consigne.
+- Que Jake reformule vraiment sans faire de leçon (dépend du modèle vocal).
+- Que `gemini-3.8-flash` accepte le schéma JSON avec la clé gratuite, la
+  justesse du bilan, son délai (estimé 10 à 30 s).
+- Que la coupure des tours (au premier son de Jake) colle bien aux phrases
+  dans une vraie conversation ; une transcription Live très en retard peut
+  tomber dans le tour suivant.
+
+Ce qui est faible :
+
+- Le bilan lit un texte issu d'une reconnaissance vocale : il peut prendre
+  une erreur de la machine pour une faute (consigne donnée au modèle, mais
+  rien ne le garantit), ou manquer une faute « réparée » par la machine.
+- Les 12 phrases du labo sont lues, pas spontanées : une machine peut se
+  comporter autrement sur de la parole hésitante.
+- Le niveau est fixé à B1 dans le prompt (profil réel en phase 3).
+- Dans le labo, Google répond « Okay » à chaque phrase (petit bruit inutile).
+- « Mon dernier bilan » ne rouvre que la dernière conversation (pas de liste).
+
+## Auto-critique de la phase 0 (pour mémoire)
 
 Ce qui marche (mesuré dans la session de construction, Chromium sans carte
 graphique) :
@@ -63,13 +101,9 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Phase 1 (conversation pédagogique), modèle conseillé **Opus 5.5**,
-  branche `phase-1`. Prompt : « Lis CLAUDE.md, docs/STATE.md et
-  docs/BRIEF.md, puis réalise la phase 1. Arrête-toi à la fin de la
-  phase. »
-- À faire en premier dans la phase 1 : comparer la transcription Gemini
-  avec Groq Whisper sur des phrases avec fautes volontaires (risque n° 3 du
-  brief ; Franco a vu des mots mal écrits).
+- Après le go de Franco sur la phase 1 : phase 2 (personnages et scènes),
+  modèle conseillé **Opus 5.5**, branche `phase-2`, ouverte par cette session
+  (règle de CLAUDE.md).
 
 ## Journal
 
@@ -83,6 +117,7 @@ Ce qui est faible :
 | 2026-11-10 | Phase 0 (mesure) | 3ᵉ rapport : indice de langue accepté par Google ; médiane 1,05 s sur 3 min 29. Réglage de pause changé en cours de conversation, donc pause réellement utilisée incertaine. Le rapport indique désormais les réglages de la conversation et compte les prises de parole de Jake par-dessus l'apprenant | En attente d'un essai « Posé » propre |
 | 2026-11-10 | Phase 0 (mesure) | 4ᵉ rapport, réglage « Posé » (900 ms) actif dès le départ : médiane **1,42 s** sur 7 tours (1 min 14), soit environ +0,4 s par rapport à « Rapide », comme prévu | Ressenti (coupures, transcription) à confirmer |
 | 2026-11-10 | Phase 0 (validation) | Les deux rythmes gardés, « Rapide » par défaut | « Oui il me laisse finir, feu vert pour la phase 1 » ; « je veux les deux délais, je passerai sur 500 pour une meilleure fluidité » |
+| 2026-11-10 | Phase 1 | Prompt complet de Jake (reprise sans leçon, tours courts, questions ouvertes), texte en direct, labo transcription (Gemini Live / Groq Whisper / Gemini Flash), bilan JSON en français par type de faute, bouton « Pourquoi ? », conversations en texte dans le navigateur. Testé avec Google et Groq simulés, aucune vraie conversation | En attente |
 
 ## Points ouverts
 
@@ -102,10 +137,9 @@ Ce qui est faible :
   hésitation d'une fin de phrase) : l'API Gemini ne propose qu'une durée de
   silence. Une vraie détection demanderait notre propre détecteur dans le
   navigateur ; à décider après le retour de Franco sur le réglage de rythme.
-- Qualité de la transcription des phrases de l'apprenant : Franco voit des
-  mots mal écrits. Indice de langue ajouté (effet non mesuré). C'est le
-  risque n° 3 du brief : à comparer avec Groq Whisper au début de la
-  phase 1, car les corrections dépendront de ce texte.
+- Qualité de la transcription des phrases de l'apprenant (risque n° 3) :
+  labo construit en phase 1, **résultat à mesurer par Franco** ; choisir la
+  source par défaut d'après ses chiffres.
 - Reconnexion automatique vers 10 minutes : jamais déclenchée en test réel
   (Google n'a pas coupé à 11 min 43).
 - Jake prend souvent la parole pendant que l'apprenant parle encore
@@ -115,3 +149,15 @@ Ce qui est faible :
   phase 1) : interruption de Jake, effet de l'indice de langue sur la
   transcription, crédibilité des lèvres, test dans Chrome (tous les essais
   ont été faits dans Firefox 159).
+- Bilan : scores par compétence, mission, expressions placées et faits à
+  mémoriser prévus par le brief, laissés aux phases 3–4.
+- Google pousse désormais l'API « Interactions » (`response_format`) pour la
+  sortie structurée ; on utilise `generateContent` + `responseJsonSchema`
+  (toujours accepté). À revoir si Google le retire.
+- Limites exactes du plan gratuit Groq : visibles seulement dans le compte
+  (la doc publique donne celles du plan Developer : 20 requêtes/min).
+- Liste de toutes les conversations passées (aujourd'hui : seulement la
+  dernière via « Mon dernier bilan ») : plutôt avec le tableau de bord
+  (phase 3).
+- Profil de l'apprenant (niveau, fautes récentes) injecté dans le prompt de
+  Jake : fixé à B1 pour l'instant, vrai profil en phase 3.
