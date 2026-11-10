@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from '@google/genai';
+import type { LiveServerMessage, Session } from '@google/genai';
 import { Mic, MIC_CHUNK_MS, MIC_RATE, PcmPlayer } from './audio';
 import { classify, friendly, friendlyFromClose, friendlyFromUnknown } from './errors';
 import { LatencyTracker } from './latency';
@@ -160,6 +160,8 @@ export class GeminiLiveSession implements VoiceSession {
   private async connect(greet: boolean): Promise<void> {
     const opts = this.opts!;
     const id = ++this.connId;
+    // Loaded on the first talk only: the home screen does not need it.
+    const { GoogleGenAI, Modality } = await import('@google/genai');
     const ai = new GoogleGenAI({
       apiKey: opts.apiKey.trim(),
       httpOptions: { apiVersion: this.apiVersion },

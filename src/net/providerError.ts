@@ -1,7 +1,7 @@
 /** Errors from the HTTP providers (Gemini text models, Groq, Azure Speech), in plain French. */
 export type Provider = 'gemini' | 'groq' | 'azure';
 export type ProviderErrorKind =
-  'bad-key' | 'quota' | 'model' | 'network' | 'blocked' | 'bad-output' | 'unknown';
+  'bad-key' | 'quota' | 'busy' | 'model' | 'network' | 'blocked' | 'bad-output' | 'unknown';
 
 const NAMES: Record<Provider, string> = {
   gemini: 'Google (Gemini)',
@@ -32,16 +32,18 @@ export class ProviderError extends Error {
         return 'Google refuse ta clé Gemini. Vérifie-la dans « Réglages ».';
       case 'quota':
         return `${who} a refusé la demande : quota gratuit atteint pour l’instant. Réessaie dans une minute.`;
+      case 'busy':
+        return `${who} est surchargé pour l’instant. Réessaie dans une minute.`;
       case 'model':
-        return `Le modèle demandé n’est pas disponible chez ${who} avec cette clé.`;
+        return `Le modèle demandé n’est pas disponible chez ${who} avec cette clé. Choisis-en un autre dans « Réglages ».`;
       case 'network':
         return `Impossible de joindre ${who}. Vérifie ta connexion puis réessaie.`;
       case 'blocked':
-        return `${who} a refusé de répondre à ce contenu.`;
+        return `${who} a refusé de répondre à ce contenu. Essaie avec un autre texte.`;
       case 'bad-output':
         return `${who} a répondu dans un format inattendu. Réessaie.`;
       default:
-        return `${who} a renvoyé une erreur.`;
+        return `${who} a renvoyé une erreur. Réessaie dans un moment ; si ça recommence, copie le rapport (« Mesures de test ») pour Claude.`;
     }
   }
 }
@@ -55,6 +57,14 @@ export function kindFromHttp(status: number, body: string): ProviderErrorKind {
   )
     return 'bad-key';
   if (status === 429 || /resource_exhausted|quota|rate limit/.test(s)) return 'quota';
+  if (
+    status === 500 ||
+    status === 502 ||
+    status === 503 ||
+    status === 504 ||
+    /overloaded|unavailable/.test(s)
+  )
+    return 'busy';
   if (
     status === 404 ||
     /not found for api version|is not found|model_not_found|does not exist/.test(s)

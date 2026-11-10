@@ -26,12 +26,18 @@ export interface WelcomeState {
   done: boolean;
   /** When it was finished (epoch ms). */
   at?: number;
+  /** The last step reached, to resume there next time. */
+  step?: WelcomeStep;
 }
 
 export function loadWelcome(store: Store = localStorage): WelcomeState {
   try {
     const p = JSON.parse(store.getItem(KEY) ?? '{}') as Partial<WelcomeState>;
-    return { done: p.done === true, ...(typeof p.at === 'number' ? { at: p.at } : {}) };
+    return {
+      done: p.done === true,
+      ...(typeof p.at === 'number' ? { at: p.at } : {}),
+      ...(WELCOME_STEPS.includes(p.step as WelcomeStep) ? { step: p.step } : {}),
+    };
   } catch {
     return { done: false };
   }
@@ -174,3 +180,8 @@ export function micLabel(d: Pick<MediaDeviceInfo, 'label' | 'deviceId'>, index: 
 /** Words that suggest a headset (the character's voice won't loop into the mic). */
 export const looksLikeHeadset = (label: string) =>
   /headset|casque|headphone|écouteur|airpods|buds|earphone|hands-free|mains libres/i.test(label);
+
+/** Where the welcome opens: the step reached last time, unless it was finished. */
+export function resumeStep(state: WelcomeState): WelcomeStep {
+  return !state.done && state.step ? state.step : 'hello';
+}

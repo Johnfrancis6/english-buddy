@@ -39,7 +39,9 @@ import { pcm16ToWav } from './transcribe/wav';
 import { GeminiAnalyzer } from './analysis/geminiAnalyzer';
 import type { AnalysisTurn } from './analysis/types';
 import { asProviderError } from './net/providerError';
-import { clearTalks, listTalks, saveTalk, type SavedTalk } from './storage/talks';
+import { listTalks, saveTalk, type SavedTalk } from './storage/talks';
+import { CARDS_BACKFILLED, clearGroup, countGroups, wipeEverything } from './storage/wipe';
+import { renderData, type DataHandlers } from './ui/dataView';
 import { clearFacts, deleteFact, listFacts, putFact, saveFacts } from './storage/facts';
 import { factsForAnalyzer, mergeFacts, newFactId, type Fact } from './memory/facts';
 import { buildLearnerProfile } from './progress/profile';
@@ -133,6 +135,15 @@ const TARGET_MS = 1500;
 const PENDING_WAIT_MS = 15_000;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+// Panels sit under the top bar, whose height depends on the screen width.
+const topbar = document.querySelector<HTMLElement>('.topbar');
+if (topbar) {
+  const setTopbarHeight = () =>
+    document.documentElement.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
+  setTopbarHeight();
+  new ResizeObserver(setTopbarHeight).observe(topbar);
+}
 const canvas = $<HTMLCanvasElement>('stage');
 const startBtn = $<HTMLButtonElement>('start');
 const lipBtn = $<HTMLButtonElement>('lip-test');
@@ -1415,8 +1426,13 @@ $('sing-result-close').addEventListener('click', () => singResultDialog.close())
  */
 async function backfillCards(): Promise<void> {
   try {
+    // Once only: after that, erased cards must stay erased.
+    if (localStorage.getItem(CARDS_BACKFILLED)) return;
     const cards = await listCards();
-    if (cards.length) return;
+    if (cards.length) {
+      localStorage.setItem(CARDS_BACKFILLED, '1');
+      return;
+    }
     const talks = await listTalks();
     const drafts = talks
       .filter((t) => t.debrief)
@@ -1425,6 +1441,7 @@ async function backfillCards(): Promise<void> {
     if (!drafts.length) return;
     const t0 = performance.now();
     const added = await addDrafts(drafts, []);
+    localStorage.setItem(CARDS_BACKFILLED, '1');
     log(
       `Révisions : ${added} carte(s) créée(s) à partir de tes anciens bilans (${Math.round(performance.now() - t0)} ms)`,
     );
@@ -1664,6 +1681,8 @@ function openSettings(): void {
   levelSelect.value = settings.startLevel;
   void fillMicSelect(settings.micDeviceId);
   keyStatus.textContent = keyStatusText(settings);
+  $('data-status').textContent = '';
+  void renderMyData();
   void renderCloud();
   settingsDialog.returnValue = '';
   settingsDialog.showModal();
@@ -1813,25 +1832,46 @@ const welcome = new WelcomeView($<HTMLDialogElement>('welcome'), {
   },
   log,
 });
-$('forget-key').addEventListener('click', () => {
-  saveSettings({ ...loadSettings(), apiKey: '', groqKey: '', azureKey: '' });
-  keyInput.value = '';
-  groqInput.value = '';
-  azureInput.value = '';
-  keyStatus.textContent = 'Clés effacées de ce navigateur.';
-});
-$('clear-talks').addEventListener('click', () => {
-  void clearTalks().then(
-    () => {
+// ---------------------------------------------------- my data (settings)
+const dataHandlers: DataHandlers = {
+  counts: countGroups,
+  clear: async (id) => {
+    if (id === 'facts') {
+      // The optional account must learn that these facts were erased.
+      await listFacts()
+        .then((all) => rememberDeleted(all.map((f) => f.id)))
+        .catch(() => {});
+    }
+    await clearGroup(id);
+    if (id === 'cards') localStorage.setItem(CARDS_BACKFILLED, '1');
+    if (id === 'talks') {
       debriefBtn.hidden = true;
       $('home-debrief').hidden = true;
       current = null;
-      log('Conversations effacées de ce navigateur');
-      keyStatus.textContent = 'Conversations effacées de ce navigateur.';
-    },
-    () => log('Effacement impossible'),
-  );
-});
+    }
+    log(`Données effacées de ce navigateur : ${id}`);
+    void renderToday();
+  },
+  keyCount: () => {
+    const s = loadSettings();
+    return [s.apiKey, s.groqKey, s.azureKey].filter(Boolean).length;
+  },
+  forgetKeys: () => {
+    saveSettings({ ...loadSettings(), apiKey: '', groqKey: '', azureKey: '' });
+    keyInput.value = '';
+    groqInput.value = '';
+    azureInput.value = '';
+    settings = loadSettings();
+    keyStatus.textContent = keyStatusText(settings);
+  },
+  wipe: async () => {
+    await cloud.signOut().catch(() => {});
+    await wipeEverything();
+    location.reload();
+  },
+  confirm: (q) => confirm(q),
+};
+const renderMyData = () => renderData($('data-list'), $('data-status'), dataHandlers);
 settingsDialog.addEventListener('close', () => {
   if (settingsDialog.returnValue !== 'save') return;
   saveSettings({

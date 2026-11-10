@@ -8,6 +8,7 @@ export type ErrorKind =
   | 'mic-missing'
   | 'network'
   | 'dropped'
+  | 'load'
   | 'unknown';
 
 export interface FriendlyError {
@@ -30,12 +31,19 @@ const MESSAGES: Record<ErrorKind, string> = {
     'Le micro est bloqué. Clique sur le cadenas à gauche de l’adresse, autorise le micro, puis recharge la page.',
   'mic-missing': 'Aucun micro détecté. Branche ton casque puis réessaie.',
   network: 'Impossible de joindre Google. Vérifie ta connexion Wi-Fi puis réessaie.',
-  dropped: 'La connexion avec Jake a été coupée.',
-  unknown: 'Quelque chose s’est mal passé.',
+  dropped:
+    'La connexion avec le personnage a été coupée. Clique sur « Reconnecter » pour reprendre.',
+  load: 'Une partie de la page n’a pas pu se charger. Vérifie ta connexion, puis recharge la page.',
+  unknown:
+    'Quelque chose s’est mal passé. Réessaie ; si ça recommence, copie le rapport (« Mesures de test ») pour Claude.',
 };
 
 export function classify(raw: string, name = ''): ErrorKind {
   const s = `${name} ${raw}`.toLowerCase();
+  if (
+    /dynamically imported module|importing a module script failed|error loading dynamically/.test(s)
+  )
+    return 'load';
   if (/notallowederror|permission denied|permission dismissed/.test(s)) return 'mic-denied';
   if (/notfounderror|requested device not found|notreadableerror/.test(s)) return 'mic-missing';
   if (/api key|api_key|unauthenticated|permission_denied|\b401\b|\b403\b/.test(s)) return 'bad-key';
@@ -50,7 +58,7 @@ export function friendly(kind: ErrorKind, detail = ''): FriendlyError {
     kind,
     message: MESSAGES[kind],
     detail,
-    canRetry: kind !== 'missing-key' && kind !== 'mic-denied',
+    canRetry: kind !== 'missing-key' && kind !== 'mic-denied' && kind !== 'load',
   };
 }
 

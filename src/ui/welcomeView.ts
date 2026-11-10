@@ -3,8 +3,11 @@ import {
   checkGeminiKey,
   checkGroqKey,
   LEVEL_CHOICES,
+  loadWelcome,
   looksLikeHeadset,
   micLabel,
+  resumeStep,
+  saveWelcome,
   STEP_TITLES,
   WELCOME_STEPS,
   type WelcomeStep,
@@ -48,7 +51,8 @@ export class WelcomeView {
     dialog.addEventListener('close', () => (this.testing = false));
   }
 
-  open(step: WelcomeStep = 'hello'): void {
+  /** Without a step: where the learner stopped last time (or the start). */
+  open(step: WelcomeStep = resumeStep(loadWelcome())): void {
     this.step = step;
     this.render();
     if (!this.dialog.open) this.dialog.showModal();
@@ -63,6 +67,8 @@ export class WelcomeView {
     const next = WELCOME_STEPS[this.index + delta];
     if (!next) return;
     this.step = next;
+    const state = loadWelcome();
+    if (!state.done) saveWelcome({ ...state, step: next });
     this.render();
     this.dialog.querySelector<HTMLElement>('h2')?.focus();
     this.dialog.scrollTop = 0;

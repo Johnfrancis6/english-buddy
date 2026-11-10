@@ -10,15 +10,21 @@
     <canvas id="stage" data-ready="false" role="img" aria-label="Scène 3D"></canvas>
 
     <header class="topbar">
-      <div class="brand">English Buddy <span class="chip">phase 7 · test</span></div>
-      <div class="row tight">
-        <button id="open-home" class="btn" type="button" hidden>Changer de scène</button>
+      <div class="brand">English Buddy <span class="chip">version de test</span></div>
+      <nav class="row tight topnav" aria-label="Menu">
+        <button id="open-home" class="btn" type="button" hidden>
+          <span class="long">Changer de scène</span><span class="short">Scènes</span>
+        </button>
         <button id="open-map" class="btn" type="button">Missions</button>
         <button id="open-documents" class="btn" type="button">Documents</button>
-        <button id="open-progress" class="btn" type="button">Mes progrès</button>
-        <button id="open-memory" class="btn" type="button">Ce qu’ils savent de moi</button>
+        <button id="open-progress" class="btn" type="button">
+          <span class="long">Mes progrès</span><span class="short">Progrès</span>
+        </button>
+        <button id="open-memory" class="btn" type="button">
+          <span class="long">Ce qu’ils savent de moi</span><span class="short">Mémoire</span>
+        </button>
         <button id="open-settings" class="btn" type="button">Réglages</button>
-      </div>
+      </nav>
     </header>
 
     <!-- Home: choose where and with whom. The scene preview is live behind. -->
@@ -424,18 +430,18 @@
             <button id="cloud-save" class="btn small" type="button">Utiliser ce projet</button>
           </div>
         </details>
+        <h3 id="data-title">Mes données</h3>
+        <p class="muted small">
+          Tout ce qu’English Buddy garde est ici, dans ce navigateur, en texte : jamais ta voix.
+          Efface ce que tu veux.
+        </p>
+        <ul id="data-list" class="data-list" aria-labelledby="data-title"></ul>
+        <p id="data-status" class="muted small" aria-live="polite"></p>
         <p id="key-status" class="muted small"></p>
         <div class="row">
           <button id="save-settings" class="btn primary" value="save">Enregistrer</button>
           <button class="btn" value="cancel">Annuler</button>
-          <button id="forget-key" class="link danger" type="button">Effacer les clés</button>
         </div>
-        <p class="muted small">
-          Tes conversations (texte seulement) restent dans ce navigateur.
-          <button id="clear-talks" class="link danger" type="button">
-            Effacer mes conversations
-          </button>
-        </p>
       </form>
     </dialog>
 

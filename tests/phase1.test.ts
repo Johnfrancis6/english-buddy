@@ -348,7 +348,10 @@ describe('providers (fetch mocked)', () => {
     expect(kindFromHttp(401, '{"error":{"code":"invalid_api_key"}}')).toBe('bad-key');
     expect(kindFromHttp(429, '')).toBe('quota');
     expect(kindFromHttp(404, 'models/x is not found for API version v1beta')).toBe('model');
-    expect(kindFromHttp(500, 'boom')).toBe('unknown');
+    // Phase 8: server-side failures say "busy, try again in a minute".
+    expect(kindFromHttp(500, 'boom')).toBe('busy');
+    expect(kindFromHttp(503, 'The model is overloaded.')).toBe('busy');
+    expect(kindFromHttp(418, 'teapot')).toBe('unknown');
   });
 
   it('sends a v1beta generateContent request with the key in a header and the JSON schema', async () => {
