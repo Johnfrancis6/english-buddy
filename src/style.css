@@ -1447,3 +1447,18 @@ body.page {
 .data-text strong {
   font-size: var(--text-sm);
 }
+
+/* Phase 8: rules that must come after the base ones they adjust. */
+@media (max-width: 760px) {
+  .map-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.lab table {
+  display: block;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.lab {
+  grid-template-columns: minmax(0, 1fr);
+}

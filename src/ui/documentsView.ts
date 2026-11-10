@@ -90,6 +90,7 @@ export class DocumentsView {
       accept: 'application/pdf,.pdf',
       class: 'visually-hidden',
       tabindex: '-1',
+      'aria-label': 'Choisir un PDF',
     });
     const pick = el('button', {
       class: 'btn',

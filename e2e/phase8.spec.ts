@@ -175,3 +175,18 @@ test('top bar: two lines at most at 420 px, nothing hidden at 1280 px', async ({
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(page.getByRole('button', { name: 'Ce qu’ils savent de moi' })).toBeVisible();
 });
+
+test('420 px: the lab and the mission map do not scroll sideways', async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 860 });
+  await page.goto('./lab.html');
+  await expect(page.locator('h1')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(420);
+  await page.goto('./');
+  await expect(page.locator('#enter')).toBeVisible();
+  await page.locator('#open-map').click();
+  await expect(page.locator('#map .map-grid')).toBeVisible();
+  const cols = await page
+    .locator('#map .map-grid')
+    .evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length);
+  expect(cols).toBe(1);
+});

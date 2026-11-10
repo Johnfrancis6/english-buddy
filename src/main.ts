@@ -387,9 +387,12 @@ function renderHomePlan(): void {
 /** Streak, daily challenge and reviews, on the home screen. */
 async function renderToday(): Promise<void> {
   const now = Date.now();
-  const [talks, cards] = await Promise.all([
+  // All read at once: each read opens the database, slow while the 3D scene loads.
+  const [talks, cards, attempts, sung] = await Promise.all([
     listTalks().catch(() => [] as SavedTalk[]),
     listCards().catch(() => [] as ReviewCard[]),
+    listAttempts().catch(() => [] as PronAttempt[]),
+    listSingAttempts().catch(() => [] as SingAttempt[]),
   ]);
   const streak = computeStreak(
     talks.map((t) => ({ at: t.startedAt, speakingMs: talkStats(t).speakingMs })),
@@ -417,13 +420,12 @@ async function renderToday(): Promise<void> {
     : 'Tes fautes et tes mots deviendront des cartes après tes bilans.';
   $<HTMLButtonElement>('open-reviews').disabled = due.length === 0;
   $('today').dataset.due = String(due.length);
-  const pron = pronProgress(await listAttempts().catch(() => [] as PronAttempt[]), now);
+  const pron = pronProgress(attempts, now);
   const weakest = pron.sounds[0];
   $('pron-line').textContent =
     pron.score === null
       ? '5 phrases à lire : th, h, r, voyelles, -ed, accent du mot. Chaque mot est noté.'
       : `Note estimée : ${pron.score}/100${weakest ? ` · à travailler : ${SOUNDS[weakest.sound].labelFr.toLowerCase()}` : ''}`;
-  const sung = await listSingAttempts().catch(() => [] as SingAttempt[]);
   const bestSung = sung.reduce((n, a) => Math.max(n, a.result.overall), 0);
   $('sing-line').textContent = sung.length
     ? `${sung.length} prise${sung.length > 1 ? 's' : ''} chantée${sung.length > 1 ? 's' : ''} · meilleure note : ${bestSung}/100 · ${SONGS.length} chansons et la tienne`
@@ -957,10 +959,18 @@ const memoryStatus = $('memory-status');
 const characterName = (id: string) =>
   CAST.find((c) => c.id === id)?.character.name ?? 'un personnage';
 
+/** The "home" button of the top bar has a long and a short (narrow screens) label. */
+function setHomeLabel(long: string, short: string): void {
+  const b = $('open-home');
+  b.querySelector('.long')!.textContent = long;
+  b.querySelector('.short')!.textContent = short;
+}
+
 async function openMemory(): Promise<void> {
   memoryStatus.textContent = '';
   try {
     const facts = await listFacts();
+    $('memory-clear').hidden = !facts.length;
     renderMemory($('memory-body'), facts, {
       characterName,
       save: async (f) => {
@@ -1313,7 +1323,7 @@ async function enterSing(song: Song): Promise<void> {
   transcriptPanel.hidden = true;
   goals.hide();
   $('open-home').hidden = false;
-  $('open-home').textContent = 'Retour à l’accueil';
+  setHomeLabel('Retour à l’accueil', 'Accueil');
   stage.setViewShift(0);
   document.body.classList.add('singing');
   singView.open(song);
@@ -1331,7 +1341,7 @@ function leaveSing(): void {
   if (!singView.active) return;
   singView.close();
   document.body.classList.remove('singing');
-  $('open-home').textContent = 'Changer de scène';
+  setHomeLabel('Changer de scène', 'Scènes');
   const back = beforeSing;
   beforeSing = null;
   if (back && (back.member !== member || back.sceneId !== sceneId)) {

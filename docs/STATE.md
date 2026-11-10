@@ -1,122 +1,187 @@
 # État du projet — English Buddy
 
-Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 7, mode autopilote).
+Dernière mise à jour : 2026-11-10 (fin de la phase 8, **fin de la chaîne
+autopilote**).
 
 ## Où on en est
 
 - Phase 0 validée par Franco le 2026-11-10 ; pull request n° 1 fusionnée.
-- **Phase 1 construite** (conversation pédagogique), branche `phase-1`,
-  **en attente du test de Franco** avec le guide
-  [docs/tests/phase-1.md](tests/phase-1.md).
-- Lien de test : <https://johnfrancis6.github.io/english-buddy/> (et le labo :
-  <https://johnfrancis6.github.io/english-buddy/lab.html>).
-- **Phase 2 construite** (personnages et scènes), branche `phase-2` (partie
-  de `phase-1`), guide [docs/tests/phase-2.md](tests/phase-2.md). Le site
-  de test montre la dernière branche poussée, donc la phase 2.
-- **Phase 3 construite** (mémoire et progrès), branche `phase-3` (partie
-  de `phase-2`), guide [docs/tests/phase-3.md](tests/phase-3.md). Le site de
-  test montre désormais la phase 3.
-- **Phase 4 construite** (habitudes et défis), branche `phase-4` (partie
-  de `phase-3`), guide [docs/tests/phase-4.md](tests/phase-4.md). Le site de
-  test montre désormais la phase 4.
-- **Phase 5 construite** (accueil et documents), branche `phase-5` (partie
-  de `phase-4`), guide [docs/tests/phase-5.md](tests/phase-5.md). Le site de
-  test montre désormais la phase 5.
-- **Phase 6 construite** (prononciation), branche `phase-6` (partie de
-  `phase-5`), guide [docs/tests/phase-6.md](tests/phase-6.md), comparaison
-  des options dans [docs/PRONUNCIATION.md](PRONUNCIATION.md). Le site de test
-  montre désormais la phase 6.
-- **Phase 7 construite** (chant), branche `phase-7` (partie de `phase-6`),
-  guide [docs/tests/phase-7.md](tests/phase-7.md), essai « qu'est-ce qui
-  peut chanter gratuitement ? » dans [docs/SINGING.md](SINGING.md). Le site
-  de test montre désormais la phase 7.
-- Prochaine étape (autopilote) : phase 8 (finition), ouverte par la session
-  orchestratrice. Franco teste les guides 1 à 7 à son retour.
+- Phases 1 à 8 **construites en autopilote**, chacune sur sa branche partie
+  de la précédente (`phase-1` → … → `phase-8`). **Rien n'est fusionné dans
+  `main`.** Aucune n'a été testée par Franco.
+- Lien de test : <https://johnfrancis6.github.io/english-buddy/> (il montre la
+  dernière branche poussée : `phase-8`). Labo :
+  <https://johnfrancis6.github.io/english-buddy/lab.html>.
+- **Pour tester au retour : un seul guide,
+  [docs/tests/GUIDE-COMPLET.md](tests/GUIDE-COMPLET.md)** (environ 2 heures
+  en 5 séances), qui renvoie aux guides de chaque phase
+  ([1](tests/phase-1.md), [2](tests/phase-2.md), [3](tests/phase-3.md),
+  [4](tests/phase-4.md), [5](tests/phase-5.md), [6](tests/phase-6.md),
+  [7](tests/phase-7.md), [8](tests/phase-8.md)).
+- La chaîne s'arrête ici, **avant** l'invitation des amis et **avant** la
+  fusion dans `main` : ce sont les décisions de Franco.
 
 ## Mode autopilote (Franco absent)
 
 Ordre des phases choisi par Franco le 2026-11-10 : 3 mémoire des
 personnages et progression (en local, Supabase facultatif), 4 révisions et
 défis, 5 accueil et documents PDF, 6 prononciation, 7 chant, 8 finition.
+Les phases se sont enchaînées sans attendre son feu vert (règles dans
+`CLAUDE.md`), ouvertes par la session orchestratrice. **Quand Franco revient,
+les règles normales reprennent** : une phase à la fois, son feu vert entre
+deux.
 
-Depuis le 2026-11-10, les phases s'enchaînent sans attendre le feu vert de
-Franco (règles dans `CLAUDE.md`). La session de la phase 1 sert de chef
-d'orchestre : elle ouvre chaque session de phase et vérifie chaque jour que
-la chaîne avance. Arrêt prévu : fin de la phase 8, **avant** l'invitation des
-amis et avant la fusion dans `main`.
+## Bilan de la chaîne autopilote (phases 1 à 8)
 
-## À faire au retour de Franco
+Ce qui existe : conversation vocale en direct avec 5 personnages 3D dans 3
+lieux, reprise des fautes sans leçon, bilan en français, mémoire, « Mes
+progrès », révisions FSRS, défi du jour, 9 missions, accueil guidé avec
+création des clés gratuites, documents PDF, prononciation notée mot par mot,
+karaoké avec Maya, et un seul endroit pour tout effacer. Tout reste dans le
+navigateur ; aucune voix n'est gardée.
 
-- [ ] Tester les guides `docs/tests/phase-1.md`, puis phase 2, 3… dans
-      l'ordre, et donner les remarques.
-- [ ] Phase 1 : labo transcription (choisit la source qui garde les fautes).
-- [ ] Phase 2 : images par seconde sur la GTX 1070 (café, bureau, rue),
-      accents britannique / américain, voix Kore, Aoede, Orus, Leda
-      acceptées ou non, gestes (naturels ? au bon moment ?), choix des
-      personnages (modèles VRoid gratuits, style manga).
-- [ ] Phase 3 : justesse des notes du bilan (trop sévères ? trop
-      gentilles ?), mémoire vraie et naturelle (rien d'inventé, rien de
-      gênant), utilité de « Mes progrès ».
-- [ ] Phase 4 : un défi de 5 minutes donne-t-il 3 minutes de ta voix (série) ?
-      Les fautes reprises et les expressions placées sont-elles bien jugées ?
-      Le personnage remarque-t-il les expressions ? Missions trop faciles ou
-      trop dures ? Réviser à voix haute sans que la machine écoute : ça te
-      va ?
-- [ ] Phase 5 : suivre l'accueil dans une fenêtre privée **comme un ami** :
-      les clics d'AI Studio et de Groq sont-ils exacts avec un vrai compte ?
-      Le test du micro reconnaît-il ta voix et ton casque ? Importer 2 ou 3
-      vrais PDF (article, cours avec colonnes) : texte propre ? Mots
-      difficiles bien choisis ? Le personnage étudie-t-il bien le passage ?
-- [ ] Phase 6 : faire les 5 phrases avec ta vraie voix ; **les notes par mot
-      sont-elles justes ?** (exagère « sink » pour « think » : la note
-      baisse-t-elle ?) ; « Écouter le modèle » marche-t-il dans Firefox ?
-- [ ] Phase 6, **facultatif mais conseillé** — clé **Azure Speech** (mesure
-      son par son, gratuite jusqu'à 5 h par mois) : créer un compte Microsoft
-      Azure (carte bancaire probablement demandée pour l'identité), une
-      ressource « Speech » en niveau **Free F0** (région France Central ou
-      West Europe), copier « KEY 1 » et la région dans Réglages →
-      « Prononciation ». Étapes détaillées dans le guide de la phase 6, partie
-      4. Sans elle, Gemini note tout seul.
-- [ ] Phase 7 : **écouter** le karaoké (rien n'a pu être écouté pendant la
-      construction) : le fredonnement de Maya est-il agréable ? Les airs
-      sont-ils justes ? Les notes de rythme et de prononciation chantée
-      sont-elles crédibles avec ta voix et ton casque ? Ta chanson
-      tombe-t-elle bien sur l'air ?
-- [ ] Phase 7, **facultatif** — dire si tu veux essayer une vraie voix
-      chantée payante (Lyria 3.5 de Google, environ 0,08 $ la chanson, pas
-      de palier gratuit) : il faudrait activer la facturation sur ta clé.
-- [ ] Phase 3, **facultatif** — activer les comptes en ligne (Supabase,
-      gratuit), environ 10 minutes :
-  1. Va sur <https://supabase.com>, clique sur « Start your project » et
-     connecte-toi avec ton compte GitHub.
-  2. « New project » : nom `english-buddy`, choisis un mot de passe de base
-     de données (garde-le pour toi, il ne sert pas au site), région
-     « West EU (Paris) » ou la plus proche, plan **Free**, puis « Create new
-     project ». Attends 1 à 2 minutes.
-  3. Menu de gauche → « SQL Editor » → « New query ». Ouvre le fichier
-     [`supabase/schema.sql`](../supabase/schema.sql) du dépôt, copie **tout**
-     son contenu, colle-le, clique sur « Run ». Le message doit être
-     « Success. No rows returned ».
-  4. Menu de gauche → « Authentication » → « URL Configuration » :
-     « Site URL » = `https://johnfrancis6.github.io/english-buddy/` ; dans
-     « Redirect URLs », « Add URL » avec la même adresse, puis « Save ».
-  5. En haut du projet, bouton « Connect » : copie l'**URL du projet**
-     (`https://xxxx.supabase.co`) et la **clé publique** (« publishable key »
-     `sb_publishable_…`, ou « anon key » si c'est la seule proposée). Ces
-     deux valeurs sont publiques par conception : la sécurité vient des
-     règles « Row Level Security » du fichier SQL. **Ne donne jamais** la
-     clé « secret » ni « service_role ».
-  6. Donne ces deux valeurs à Claude (il les met dans
-     `src/sync/config.ts`), ou colle-les toi-même dans Réglages → « Projet
-     Supabase (avancé) » → « Utiliser ce projet » pour essayer.
-  7. Réglages → « Compte (facultatif) » : ton e-mail → « Recevoir un lien de
-     connexion » → ouvre le lien reçu **sur le même ordinateur** → tu
-     reviens connecté ; « Synchroniser maintenant ».
-  8. Limite connue du plan gratuit : Supabase n'envoie que quelques e-mails
-     de connexion par heure ; un projet sans activité pendant une semaine
-     est mis en pause (un clic pour le relancer).
-- [ ] Ouvrir la pull request finale vers `main` et la fusionner (ou la
-      demander à Claude).
+**Ce qui a été mesuré** pendant la construction : uniquement avec Google et
+Groq **simulés**, sans carte graphique, sans haut-parleur, avec le micro
+factice de Chromium (des bips) ; plus quelques appels réels avec de **fausses
+clés** (CORS et messages d'erreur de Google, Groq et Azure). 206 tests de
+logique et 21 tests Playwright vérifient le comportement de la page.
+
+**Ce qui n'a jamais été mesuré** (aucune vraie clé, aucune vraie voix) — le
+vrai test commence au retour de Franco :
+
+| Phase | Mesuré (simulé ou fausses clés) | Jamais mesuré |
+|---|---|---|
+| 0 | Clé gardée, messages d'erreur ; **avec Franco** : 11 min 43 sans coupure, délai médian 1,0–1,4 s | Reconnexion vers 10 min, interruption, lèvres jugées par un humain |
+| 1 | Prompt de Jake envoyé, texte en direct, bilan JSON, labo à 4 sources | Quelle source garde les fautes (labo), justesse du bilan, Jake qui reformule sans leçon |
+| 2 | 5 personnages chargés (4–5 Mo), gestes déclenchés, coût de dessin 130–300 appels | Images/s sur la GTX 1070, voix Kore/Aoede/Orus/Leda, accent britannique, bon moment des gestes |
+| 3 | Mémoire dans le prompt, écran mémoire, « Mes progrès », Supabase avec un faux client | Justesse et stabilité des notes, mémoire naturelle et vraie, Supabase réel |
+| 4 | Cartes FSRS, défi et missions (prompts et mise à jour des cartes) | Perches sans donner la réponse, jugement des missions, 3 min de voix en 5 min de défi |
+| 5 | Accueil en 6 étapes, vérification des clés (fausses clés), PDF lu, mots difficiles | Clics réels d'AI Studio et Groq, seuil du test du micro, qualité de vrais PDF |
+| 6 | Exercice complet, cartes « son », contrôle Whisper | **Justesse de Gemini comme juge de prononciation** (risque principal), réponse Azure réelle |
+| 7 | Karaoké, rythme sur des prises synthétiques, chanson écrite | **Tout ce qui s'entend**, rythme sur une vraie voix chantée |
+| 8 | Effacement complet (Playwright lit le stockage), barre à 2 lignes à 420 px, premier chargement 285 Ko compressés au lieu de 365 | Messages d'erreur réels de Google en panne (texte « overloaded » supposé) |
+
+## À faire au retour de Franco (dans cet ordre)
+
+1. [ ] **Tester** avec [docs/tests/GUIDE-COMPLET.md](tests/GUIDE-COMPLET.md)
+       (5 séances, environ 2 heures, dont une le lendemain) et renvoyer le
+       message-type à la fin du guide, avec les rapports « Mesures de test ».
+       Points clés : délai et coupures (phase 0), tableau du labo (phase 1),
+       images/s sur la GTX 1070 (phase 2), justesse des bilans et de la
+       mémoire (phases 1 et 3), perches du défi (phase 4), clics des clés
+       (phase 5), notes de prononciation « sink / think » (phase 6), écouter
+       Maya (phase 7), « Mes données » (phase 8).
+2. [ ] **Clé Groq** gratuite (si pas déjà faite pendant l'accueil) : utile au
+       labo, au contrôle de prononciation et au rythme des chansons. Étapes
+       dans l'accueil guidé (étape 3).
+3. [ ] Choisir la **source de transcription par défaut** d'après le labo
+       (Claude la règle ensuite).
+4. [ ] **Facultatif mais conseillé — clé Azure Speech** (mesure son par son,
+       gratuite jusqu'à 5 h par mois) : créer un compte Microsoft Azure
+       (carte bancaire probablement demandée pour l'identité), une ressource
+       « Speech » en niveau **Free F0** (région France Central ou West
+       Europe), copier « KEY 1 » et la région dans Réglages →
+       « Prononciation ». Détails : guide de la phase 6, partie 4.
+5. [ ] **Facultatif — comptes en ligne (Supabase, gratuit)**, environ
+       10 minutes, à faire **avant d'inviter les amis** s'ils doivent
+       retrouver leurs données sur un autre ordinateur :
+     1. Va sur <https://supabase.com>, clique sur « Start your project » et
+        connecte-toi avec ton compte GitHub.
+     2. « New project » : nom `english-buddy`, choisis un mot de passe de base
+        de données (garde-le pour toi, il ne sert pas au site), région
+        « West EU (Paris) » ou la plus proche, plan **Free**, puis « Create new
+        project ». Attends 1 à 2 minutes.
+     3. Menu de gauche → « SQL Editor » → « New query ». Ouvre le fichier
+        [`supabase/schema.sql`](../supabase/schema.sql) du dépôt, copie **tout**
+        son contenu, colle-le, clique sur « Run ». Le message doit être
+        « Success. No rows returned ».
+     4. Menu de gauche → « Authentication » → « URL Configuration » :
+        « Site URL » = `https://johnfrancis6.github.io/english-buddy/` ; dans
+        « Redirect URLs », « Add URL » avec la même adresse, puis « Save ».
+     5. En haut du projet, bouton « Connect » : copie l'**URL du projet**
+        (`https://xxxx.supabase.co`) et la **clé publique** (« publishable key »
+        `sb_publishable_…`, ou « anon key » si c'est la seule proposée). Ces
+        deux valeurs sont publiques par conception : la sécurité vient des
+        règles « Row Level Security » du fichier SQL. **Ne donne jamais** la
+        clé « secret » ni « service_role ».
+     6. Donne ces deux valeurs à Claude (il les met dans
+        `src/sync/config.ts`), ou colle-les toi-même dans Réglages → « Projet
+        Supabase (avancé) » → « Utiliser ce projet » pour essayer.
+     7. Réglages → « Compte (facultatif) » : ton e-mail → « Recevoir un lien de
+        connexion » → ouvre le lien reçu **sur le même ordinateur** → tu
+        reviens connecté ; « Synchroniser maintenant ».
+     8. Limite connue du plan gratuit : Supabase n'envoie que quelques e-mails
+        de connexion par heure ; un projet sans activité pendant une semaine
+        est mis en pause (un clic pour le relancer).
+6. [ ] **Facultatif** — dire si tu veux une vraie voix chantée payante
+       (Lyria 3.5, environ 0,08 $ la chanson, facturation à activer).
+7. [ ] Décisions à prendre après le test (voir « Points ouverts ») :
+       prononciation dans le niveau estimé ou non, mémoire partagée ou par
+       personnage, révisions écoutées par la machine, nom définitif.
+8. [ ] **Fusionner dans `main`** : demander à Claude d'ouvrir la pull request
+       de `phase-8` vers `main` (elle contient les phases 1 à 8), la relire,
+       la fusionner. Ensuite le site de test montrera `main` tant qu'aucune
+       autre branche n'est poussée (à régler : ne déployer que `main`).
+9. [ ] **Inviter les amis** (5 à 20) : leur envoyer le lien ; l'accueil guidé
+       leur fait créer leur propre clé gratuite. Rien à faire de plus sans
+       Supabase (chacun garde ses données dans son navigateur).
+
+## Auto-critique de la phase 8
+
+Ce qui marche (mesuré dans la session de construction, Chromium sans GPU,
+Google simulé) :
+
+- Réglages → « Mes données » : les 7 magasins du navigateur et les clés, en
+  un seul endroit, avec le nombre d'éléments ; « Effacer » par ligne ;
+  « Conversations, bilans et chansons » efface aussi les chansons et les
+  notes de chant ; « Tout effacer » vide tout (clés comprises), déconnecte le
+  compte et recharge la page (Playwright qui lit IndexedDB et
+  `localStorage`). Un test de logique échoue si un futur magasin ou une
+  future entrée de `localStorage` n'est pas effaçable.
+- Les cartes effacées ne reviennent plus au rechargement (la conversion des
+  anciens bilans ne se fait qu'une fois).
+- Barre du haut : 79 px (2 lignes) à 360, 420 et 560 px, au lieu de 142 px
+  (3 lignes) qui cachaient le haut de l'accueil ; les panneaux se placent
+  sous sa hauteur réelle. Labo et carte des missions sans défilement de côté
+  à 420 px (Playwright).
+- Premier chargement : 285 Ko compressés au lieu de 365 Ko (la bibliothèque
+  de Google n'arrive qu'au premier « Démarrer ») — mesuré sur `vite build`.
+- Erreurs : chaque message de Google, Groq ou Azure dit quoi faire (test qui
+  passe sur tous les cas) ; panne serveur = « surchargé, réessaie dans une
+  minute » ; morceau de page non chargé = « recharge la page ».
+- Relecture du code et des tests : les clés ne sont envoyées qu'à leur
+  service, jamais dans une adresse, jamais au compte en ligne ; rien d'audio
+  n'est écrit dans IndexedDB ni envoyé au compte (tests qui lisent le code et
+  le stockage).
+- Tour complet de 19 écrans à 1280 et 420 px comparé à DESIGN.md : écarts
+  corrigés (barre du haut, carte des missions en 1 colonne, labo, « Tout
+  effacer » caché sur une mémoire vide, champ de fichier sans libellé).
+- L'accueil guidé reprend à l'étape atteinte.
+
+Ce qui est **supposé, pas mesuré** :
+
+- Que les textes des pannes réelles de Google contiennent « overloaded » ou
+  un code 5xx (classés « surchargé ») : jamais vu en vrai.
+- Le gain de chargement sur la connexion de Franco (seule la taille est
+  mesurée).
+- Le contraste et le clavier : vérifiés écran par écran sur captures et par
+  un contrôle automatique simple (chaque bouton et champ visible a un nom) ;
+  pas d'audit complet avec un lecteur d'écran.
+
+Ce qui est faible :
+
+- À 420 px, le panneau « Défi du jour » / mission couvre en partie le visage
+  du personnage (le téléphone reste hors périmètre).
+- Le premier fichier reste lourd (1 Mo non compressé : three.js et
+  three-vrm, nécessaires à la scène de l'accueil).
+- « Tout effacer » n'efface pas la copie du compte en ligne (dit à l'écran) :
+  à faire quand les comptes seront activés.
+- Le site de test montre toujours la dernière branche poussée.
+- Deux tests Playwright sont sensibles à la lenteur de la machine sans GPU :
+  la ligne « Chanson » de l'accueil (a échoué une fois sur la CI ; l'accueil
+  lit maintenant ses données en parallèle) et le test du micro de l'accueil
+  guidé avec le micro factice (a échoué 2 fois en suite complète sur cette
+  machine, jamais seul ni sur la CI). La dernière suite complète : 21 sur 21.
 
 ## Auto-critique de la phase 7
 
@@ -534,12 +599,11 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Autopilote : phase 8 (finition, harmonisation finale, guide de test
-  complet), modèle conseillé **Opus 5.5**, branche `phase-8` créée depuis
-  `phase-7`, ouverte par la session orchestratrice. Arrêt avant
-  l'invitation des amis et avant la fusion dans `main`. À reprendre en
-  phase 8 : la barre du haut passe sur trois lignes à 420 px ; « Effacer mes
-  conversations » n'efface pas encore les chansons ni les notes de chant.
+- Fin de la chaîne autopilote. **Rien jusqu'au retour de Franco.** À son
+  retour : il suit le guide complet, puis Claude corrige d'après ses
+  remarques (une phase de corrections, modèle conseillé Opus 5.5, branche
+  partie de `phase-8`), puis Franco décide de la fusion dans `main` et de
+  l'invitation des amis.
 
 ## Journal
 
@@ -560,6 +624,7 @@ Ce qui est faible :
 | 2026-11-10 | Phase 5 | Accueil guidé en français en 6 étapes (confidentialité, clé Gemini gratuite vérifiée, clé Groq facultative, choix et test du micro, niveau de départ, premier personnage), revisible depuis les réglages ; documents : import PDF lu dans le navigateur (PDF.js 6.5.438), passages, mots difficiles (Gemini Flash) ajoutés aux révisions FSRS, étude d'un passage avec un personnage, lien web seulement si le site l'autorise (CORS). Testé avec Google simulé | En attente (autopilote) |
 | 2026-11-10 | Phase 6 | Comparaison écrite des options de notation (Gemini, Groq Whisper, Azure, modèles dans le navigateur) ; exercice « Prononciation » derrière `PronunciationScorer` : Gemini par défaut, contrôle Groq Whisper facultatif, Azure facultatif ; 5 phrases (révisions, tes fautes et tes mots, sons th / h / r / voyelles / -ed / accent) ; note par mot et sons à travailler ; cartes FSRS « Prononciation » notées par le score ; « Mes progrès » : barre prononciation (estimation, hors niveau) et sons à travailler ; aucune voix gardée. Testé avec Google et Groq simulés | En attente (autopilote) |
 | 2026-11-10 | Phase 7 | Essai écrit « qu'est-ce qui peut chanter gratuitement ? » (aucune voix chantée gratuite ne suit nos notes : Lyria payant, voix Gemini parlées, synthèses libres en GPL ou trop lourdes) ; karaoké maison en WebAudio : 8 chansons (5 du domaine public, 3 écrites pour la plateforme), paroles allumées en rythme, Maya qui fredonne, garde le rythme et applaudit, trois façons de chanter ; note par mot : prononciation (`PronunciationScorer`, prévenu que c'est chanté) et rythme mesuré dans le navigateur (affiné par Groq Whisper) ; chanson écrite à partir des fautes et des mots du jour (Gemini, ou assemblée sans clé) ; aucune voix gardée. Testé avec Google et Groq simulés, rien n'a été écouté | En attente (autopilote) |
+| 2026-11-10 | Phase 8 | Finition : « Mes données » dans les réglages (tout ce qui est gardé, effaçable par ligne ou en entier ; chansons et notes de chant effacées avec les conversations) ; barre du haut sur 2 lignes à 420 px ; tour des 19 écrans à 1280 et 420 px contre DESIGN.md (carte des missions, labo, libellés) ; bibliothèque Google chargée au premier « Démarrer » (365 → 285 Ko au premier chargement) ; erreurs qui disent toutes quoi faire ; l'accueil reprend à l'étape atteinte ; guide complet du retour (2 h en 5 séances). Testé avec Google simulé | En attente (autopilote terminé) |
 
 ## Points ouverts
 
@@ -569,8 +634,12 @@ Ce qui est faible :
   que donne un style « chanté ».
 - Karaoké : juger la hauteur des notes chantées (détection de hauteur dans
   le navigateur) ; plus de chansons ; choisir le personnage qui accompagne.
-- Chant : effacer les chansons et les notes de chant depuis les réglages ;
-  les mettre dans le compte Supabase quand les comptes seront activés.
+- Chant : mettre les chansons et les notes de chant dans le compte Supabase
+  quand les comptes seront activés (l'effacement est fait en phase 8).
+- « Tout effacer » : effacer aussi la copie du compte en ligne quand les
+  comptes seront activés.
+- Déploiement : ne publier que `main` (et un aperçu séparé pour les branches)
+  une fois la fusion faite.
 
 - Prononciation dans le niveau estimé : laissée à part (phrases lues) ; à
   décider avec Franco après son test.
@@ -582,7 +651,6 @@ Ce qui est faible :
 - OCR des PDF scannés (Tesseract.js, gratuit, lourd) : si Franco le veut.
 - Documents dans le compte Supabase : non (texte complet local, comme le
   brief) ; seulement les cartes, quand les comptes seront activés.
-- Accueil : reprendre à l'étape où l'on s'était arrêté.
 
 - Révisions écoutées par la machine (Gemini ou Groq qui vérifie la phrase
   dite) au lieu de l'auto-notation : à décider avec Franco (coût en quota).
@@ -609,8 +677,6 @@ Ce qui est faible :
 - Noms des voix Gemini (« Puck »…) non vérifiés dans la doc officielle.
 - Garde-fou d'écho : seule l'annulation d'écho du navigateur est activée ;
   à revoir si quelqu'un utilise des haut-parleurs.
-- Le site Pages affiche la dernière branche poussée (`main` ou `phase-*`) :
-  à revoir quand `main` servira de version stable (phase 8).
 - Poids des modèles 3D : réglé en phase 2 (4–5 Mo chacun, textures WebP).
 - Détection « intelligente » des phrases inachevées (distinguer une
   hésitation d'une fin de phrase) : l'API Gemini ne propose qu'une durée de
