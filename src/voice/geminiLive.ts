@@ -3,7 +3,6 @@ import { Mic, MIC_CHUNK_MS, MIC_RATE, PcmPlayer } from './audio';
 import { classify, friendly, friendlyFromClose, friendlyFromUnknown } from './errors';
 import { LatencyTracker } from './latency';
 import { base64ToBytes, bytesToBase64, sampleRateFromMime } from './pcm';
-import { JAKE_GREETING_CUE, JAKE_SYSTEM_PROMPT } from './persona';
 import type { VoiceEvents, VoiceSession, VoiceState } from './types';
 
 export interface GeminiLiveOptions {
@@ -12,6 +11,10 @@ export interface GeminiLiveOptions {
   voice: string;
   /** Silence, in ms, after which the server decides the learner has finished. */
   pauseMs: number;
+  /** Character prompt (persona + teaching policy). */
+  systemPrompt: string;
+  /** Sent as text right after connecting so the character speaks first. */
+  greeting: string | null;
 }
 
 const OUTPUT_RATE = 24_000;
@@ -163,7 +166,7 @@ export class GeminiLiveSession implements VoiceSession {
       model: opts.model,
       config: {
         responseModalities: [Modality.AUDIO],
-        systemInstruction: JAKE_SYSTEM_PROMPT,
+        systemInstruction: opts.systemPrompt,
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voice } } },
         // The transcript comes from a separate recogniser, not from what the
         // voice model understood. Without a hint it guesses the language, and
@@ -199,9 +202,9 @@ export class GeminiLiveSession implements VoiceSession {
     } catch {
       /* already closed */
     }
-    if (greet) {
+    if (greet && opts.greeting) {
       try {
-        session.sendRealtimeInput({ text: JAKE_GREETING_CUE });
+        session.sendRealtimeInput({ text: opts.greeting });
       } catch {
         /* the greeting is optional */
       }
@@ -212,6 +215,7 @@ export class GeminiLiveSession implements VoiceSession {
   private onMicChunk(pcm: Uint8Array, rms: number): void {
     const voiced = this.latency.onMicFrame(performance.now(), rms, MIC_CHUNK_MS);
     this.events.onMicLevel(rms, voiced);
+    this.events.onMicAudio?.(pcm, voiced);
     const s = this.session;
     if (!s || this._state === 'connecting' || this._state === 'error') return;
     try {
@@ -241,7 +245,7 @@ export class GeminiLiveSession implements VoiceSession {
     if (sc.interrupted) {
       this.player.flush();
       this.inModelTurn = false;
-      this.events.onTranscript('jake', '', true);
+      this.events.onTurnComplete(true);
       this.setState('listening');
     }
     for (const part of sc.modelTurn?.parts ?? []) {
@@ -257,15 +261,11 @@ export class GeminiLiveSession implements VoiceSession {
         sampleRateFromMime(part.inlineData?.mimeType, OUTPUT_RATE),
       );
     }
-    if (sc.inputTranscription?.text)
-      this.events.onTranscript('you', sc.inputTranscription.text, false);
-    if (sc.outputTranscription?.text) {
-      this.events.onTranscript('jake', sc.outputTranscription.text, false);
-    }
+    if (sc.inputTranscription?.text) this.events.onTranscript('you', sc.inputTranscription.text);
+    if (sc.outputTranscription?.text) this.events.onTranscript('jake', sc.outputTranscription.text);
     if (sc.turnComplete) {
       this.inModelTurn = false;
-      this.events.onTranscript('you', '', true);
-      this.events.onTranscript('jake', '', true);
+      this.events.onTurnComplete(false);
       if (!this.player.playing && this._state === 'speaking') this.setState('listening');
     }
   }

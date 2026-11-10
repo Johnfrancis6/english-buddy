@@ -1,20 +1,49 @@
 import './style.css';
 import { Stage } from './scene/stage';
 import { bandEnergies, computeVisemes, SILENT, smoothVisemes } from './lipsync/visemes';
-import { DEFAULTS, loadSettings, maskKey, MODELS, PAUSES, saveSettings, VOICES } from './settings';
-import { PcmPlayer } from './voice/audio';
+import {
+  ANALYSIS_MODELS,
+  DEFAULTS,
+  effectiveSource,
+  loadSettings,
+  maskKey,
+  MODELS,
+  PAUSES,
+  saveSettings,
+  TRANSCRIPT_SOURCES,
+  VOICES,
+  type Settings,
+  type TranscriptSource,
+} from './settings';
+import { MIC_CHUNK_MS, MIC_RATE, PcmPlayer } from './voice/audio';
 import { friendly, type FriendlyError } from './voice/errors';
 import { GeminiLiveSession } from './voice/geminiLive';
 import { LatencyTracker } from './voice/latency';
 import type { VoiceState } from './voice/types';
+import { buildSystemPrompt, DEFAULT_LEARNER, JAKE } from './teaching/persona';
+import { Transcript, type Turn } from './talk/transcript';
+import { ClipRecorder } from './transcribe/clip';
+import { makeTranscriber } from './transcribe/factory';
+import type { Transcriber } from './transcribe/types';
+import { pcm16ToWav } from './transcribe/wav';
+import { GeminiAnalyzer } from './analysis/geminiAnalyzer';
+import type { AnalysisTurn } from './analysis/types';
+import { asProviderError } from './net/providerError';
+import { clearTalks, listTalks, saveTalk, type SavedTalk } from './storage/talks';
+import { TranscriptView } from './ui/transcriptView';
+import { debriefText, renderDebrief } from './ui/debriefView';
+import { el } from './ui/dom';
 
 const CHARACTER_URL = `${import.meta.env.BASE_URL}models/HairSample_Male.vrm`;
 const TARGET_MS = 1500;
+/** Longest wait for the second recogniser before the debrief starts anyway. */
+const PENDING_WAIT_MS = 15_000;
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('stage');
 const startBtn = $<HTMLButtonElement>('start');
 const lipBtn = $<HTMLButtonElement>('lip-test');
+const debriefBtn = $<HTMLButtonElement>('open-debrief');
 const dState = $('d-state');
 const dMedian = $('d-median');
 const dCount = $('d-count');
@@ -23,14 +52,22 @@ const dDuration = $('d-duration');
 const dMic = $('d-mic');
 const dModel = $('d-model');
 const dLog = $('d-log');
-const transcriptEl = $('transcript');
+const transcriptPanel = $('transcript-panel');
+const transcriptBody = $('transcript');
 const errorBox = $('error');
 const settingsDialog = $<HTMLDialogElement>('settings');
 const keyInput = $<HTMLInputElement>('api-key');
+const groqInput = $<HTMLInputElement>('groq-key');
 const modelSelect = $<HTMLSelectElement>('model');
 const voiceSelect = $<HTMLSelectElement>('voice');
 const pauseSelect = $<HTMLSelectElement>('pause');
+const sourceSelect = $<HTMLSelectElement>('source');
+const analysisSelect = $<HTMLSelectElement>('analysis-model');
+const showTranscriptBox = $<HTMLInputElement>('show-transcript');
 const keyStatus = $('key-status');
+const debriefDialog = $<HTMLDialogElement>('debrief');
+const debriefStatus = $('debrief-status');
+const debriefBody = $('debrief-body');
 
 const STATE_LABELS: Record<VoiceState, string> = {
   idle: 'Prêt — clique sur « Démarrer »',
@@ -40,6 +77,10 @@ const STATE_LABELS: Record<VoiceState, string> = {
   reconnecting: 'Reconnexion…',
   error: 'Arrêté sur une erreur',
 };
+const SOURCE_LABEL = Object.fromEntries(TRANSCRIPT_SOURCES.map((s) => [s.id, s.label])) as Record<
+  TranscriptSource,
+  string
+>;
 
 let settings = loadSettings();
 let characterReady = false;
@@ -69,7 +110,23 @@ stage
     log(`Chargement du personnage impossible : ${String(err)}`);
   });
 
-// ------------------------------------------------------------------- voice
+// ------------------------------------------------------------- the talk
+/** Everything about the conversation in progress (text only). */
+interface Talk {
+  id: string;
+  startedAt: number;
+  transcript: Transcript;
+  source: TranscriptSource;
+  /** Second recogniser, or null when the Live transcript is used. */
+  transcriber: Transcriber | null;
+  /** The learner's current turn, in memory only, to know whether they spoke. */
+  clip: ClipRecorder;
+  transcribeErrors: number;
+  ended: boolean;
+}
+let talk: Talk | null = null;
+const transcriptView = new TranscriptView(transcriptBody);
+
 const player = new PcmPlayer();
 const latency = new LatencyTracker();
 const voice = new GeminiLiveSession(player, latency, {
@@ -82,12 +139,15 @@ const voice = new GeminiLiveSession(player, latency, {
     }
     overlapsSeen = latency.overlaps;
     renderLatency();
+    if (talk) endLearnerTurn(talk);
   },
   onMicLevel: (rms, voiced) => {
     dMic.style.width = `${Math.min(100, Math.round(rms * 500))}%`;
     dMic.classList.toggle('voiced', voiced);
   },
-  onTranscript: appendTranscript,
+  onMicAudio: (pcm, voiced) => talk?.clip.push(pcm, voiced),
+  onTranscript: (who, text) => talk?.transcript.addLive(who, text),
+  onTurnComplete: (interrupted) => talk?.transcript.completeModelTurn(interrupted),
   onInfo: log,
 });
 
@@ -99,12 +159,55 @@ startBtn.addEventListener('click', () => {
 async function startTalk(): Promise<void> {
   hideError();
   settings = loadSettings();
-  voice.configure(settings);
-  sessionLabel = `${settings.model} · voix ${settings.voice} · pause ${settings.pauseMs} ms`;
+  const source = effectiveSource(settings);
+  if (source !== settings.transcriptSource) {
+    log('Pas de clé Groq : la transcription Gemini Live est utilisée');
+  }
+  voice.configure({
+    ...settings,
+    systemPrompt: buildSystemPrompt(JAKE, DEFAULT_LEARNER),
+    greeting: JAKE.greeting,
+  });
+  sessionLabel = `${settings.model} · voix ${settings.voice} · pause ${settings.pauseMs} ms · texte : ${source}`;
   dModel.textContent = sessionLabel;
   overlapsSeen = 0;
-  transcriptEl.replaceChildren();
+  const transcript = new Transcript(source);
+  transcript.onChange = (turn) => transcriptView.update(turn);
+  talk = {
+    id: `talk-${Date.now()}`,
+    startedAt: Date.now(),
+    transcript,
+    source,
+    transcriber: makeTranscriber(source, settings),
+    clip: new ClipRecorder({ chunkMs: MIC_CHUNK_MS }),
+    transcribeErrors: 0,
+    ended: false,
+  };
+  transcriptView.clear();
+  renderSourceLabel();
   await voice.start();
+}
+
+/**
+ * Jake starts answering, or the talk stops: the learner's turn is over. With
+ * a second recogniser, the turn's audio goes to it once, then is dropped.
+ */
+function endLearnerTurn(t: Talk): void {
+  const pcm = t.clip.cut();
+  const turn = t.transcript.cutLearner(pcm !== null);
+  if (!turn || !pcm || !t.transcriber) return;
+  const transcriber = t.transcriber;
+  transcriber.transcribe(pcm16ToWav(pcm, MIC_RATE)).then(
+    (text) => t.transcript.setLearnerText(turn.id, text),
+    (err: unknown) => {
+      t.transcript.setLearnerText(turn.id, null);
+      const e = asProviderError(err, t.source === 'gemini-audio' ? 'gemini' : 'groq');
+      if (t.transcribeErrors++ === 0) {
+        log(`${transcriber.label} : ${e.french} Texte Gemini Live utilisé à la place.`);
+      }
+      log(`Détail : ${e.detail}`);
+    },
+  );
 }
 
 function renderState(state: VoiceState): void {
@@ -122,6 +225,7 @@ function renderState(state: VoiceState): void {
     log(`Conversation arrêtée après ${formatDuration(performance.now() - sessionStartedAt)}`);
     sessionStartedAt = null;
     dMic.style.width = '0';
+    if (talk && !talk.ended) void finishTalk(talk);
   }
   if (state === 'listening' || state === 'speaking') hideError();
 }
@@ -139,6 +243,145 @@ setInterval(() => {
     dDuration.textContent = formatDuration(performance.now() - sessionStartedAt);
   }
 }, 500);
+
+// ---------------------------------------------------------------- debrief
+let current: SavedTalk | null = null;
+
+async function finishTalk(t: Talk): Promise<void> {
+  t.ended = true;
+  endLearnerTurn(t);
+  t.transcript.completeModelTurn(false);
+  const waitUntil = Date.now() + PENDING_WAIT_MS;
+  while (t.transcript.pendingCount > 0 && Date.now() < waitUntil) {
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  const turns = t.transcript.finished();
+  if (!turns.some((x) => x.who === 'you')) {
+    log('Pas de phrase de ta part : pas de bilan pour cette conversation');
+    return;
+  }
+  current = {
+    id: t.id,
+    startedAt: t.startedAt,
+    durationMs: Date.now() - t.startedAt,
+    label: sessionLabel,
+    turns: turns.map(({ id, who, text, liveText, source, interrupted }) => ({
+      id,
+      who,
+      text,
+      liveText,
+      source,
+      interrupted,
+    })),
+    debrief: null,
+    why: {},
+  };
+  await persist(current);
+  await runDebrief(current);
+}
+
+function analyzer(): GeminiAnalyzer {
+  settings = loadSettings();
+  return new GeminiAnalyzer(
+    settings.apiKey,
+    settings.analysisModel,
+    ANALYSIS_MODELS.map((m) => m.id),
+  );
+}
+
+const analysisTurns = (s: SavedTalk): AnalysisTurn[] =>
+  s.turns.map(({ id, who, text, interrupted }) => ({ id, who, text, interrupted }));
+
+async function runDebrief(s: SavedTalk): Promise<void> {
+  showDebrief(s);
+  debriefStatus.textContent = 'Jake prépare ton bilan… (10 à 30 secondes)';
+  debriefStatus.className = 'status busy';
+  $('debrief-retry').hidden = true;
+  try {
+    const source = s.turns.find((x) => x.who === 'you')?.source ?? 'live';
+    s.debrief = await analyzer().analyze(analysisTurns(s), {
+      level: DEFAULT_LEARNER.level,
+      characterName: JAKE.name,
+      transcriptSource: source === 'live' ? 'Gemini Live' : SOURCE_LABEL[source],
+    });
+    log(`Bilan prêt (${s.debrief.mistakes.length} fautes, modèle ${s.debrief.model})`);
+    await persist(s);
+    if (current?.id === s.id) showDebrief(s);
+  } catch (err) {
+    const e = asProviderError(err, 'gemini');
+    debriefStatus.textContent = `${e.french} Ta conversation est gardée : tu peux réessayer.`;
+    debriefStatus.className = 'status error-text';
+    $('debrief-retry').hidden = false;
+    log(`Bilan impossible : ${e.detail}`);
+  }
+}
+
+function showDebrief(s: SavedTalk): void {
+  current = s;
+  const when = new Date(s.startedAt).toLocaleString('fr-FR');
+  $('debrief-meta').textContent = `${when} · ${formatDuration(s.durationMs)}`;
+  debriefBody.replaceChildren();
+  debriefStatus.textContent = '';
+  debriefStatus.className = 'status';
+  if (s.debrief) {
+    renderDebrief(debriefBody, s.debrief, {
+      known: s.why,
+      why: async (index, mistake) => {
+        const text = await analyzer()
+          .explain(mistake, analysisTurns(s))
+          .catch((err: unknown) => {
+            throw asProviderError(err, 'gemini');
+          });
+        s.why[index] = text;
+        void persist(s);
+        return text;
+      },
+    });
+  }
+  $('debrief-lines').replaceChildren(
+    ...s.turns.map((x) =>
+      el(
+        'p',
+        { class: x.who },
+        el('span', { class: 'who', text: x.who === 'you' ? 'Toi :' : 'Jake :' }),
+        ` ${x.text}`,
+      ),
+    ),
+  );
+  if (!debriefDialog.open) debriefDialog.showModal();
+}
+
+async function persist(s: SavedTalk): Promise<void> {
+  try {
+    await saveTalk(s);
+    debriefBtn.hidden = false;
+  } catch (err) {
+    log(`Conversation non sauvegardée dans le navigateur : ${String(err)}`);
+  }
+}
+
+debriefBtn.addEventListener('click', () => {
+  void listTalks().then((all) => {
+    const last = all[0];
+    if (!last) return;
+    showDebrief(last);
+    if (!last.debrief) void runDebrief(last);
+  });
+});
+$('debrief-retry').addEventListener('click', () => current && void runDebrief(current));
+$('debrief-close').addEventListener('click', () => debriefDialog.close());
+$('debrief-copy').addEventListener('click', () => {
+  if (!current?.debrief) return;
+  void navigator.clipboard.writeText(debriefText(current.debrief)).then(
+    () => log('Bilan copié'),
+    () => log('Copie impossible'),
+  );
+});
+void listTalks()
+  .then((all) => (debriefBtn.hidden = all.length === 0))
+  .catch(() => {
+    /* IndexedDB unavailable (private window): the debrief still shows */
+  });
 
 // ---------------------------------------------------------------- lip sync
 const analyser = voice.outputAnalyser;
@@ -189,28 +432,21 @@ lipBtn.addEventListener('click', () => {
 });
 
 // -------------------------------------------------------------- transcript
-// Kept in memory only, to check that the conversation works. Nothing is saved.
-const openLine: { you: HTMLElement | null; jake: HTMLElement | null } = { you: null, jake: null };
-
-function appendTranscript(who: 'you' | 'jake', text: string, turnDone: boolean): void {
-  if (text) {
-    let line = openLine[who];
-    if (!line) {
-      line = document.createElement('p');
-      line.className = who;
-      const label = document.createElement('span');
-      label.className = 'who';
-      label.textContent = who === 'you' ? 'Toi :' : 'Jake :';
-      line.append(label, document.createElement('span'));
-      transcriptEl.append(line);
-      openLine[who] = line;
-      while (transcriptEl.childElementCount > 12) transcriptEl.firstElementChild?.remove();
-    }
-    line.lastElementChild!.textContent += text;
-    transcriptEl.scrollTop = transcriptEl.scrollHeight;
-  }
-  if (turnDone) openLine[who] = null;
+function applyTranscriptVisibility(): void {
+  transcriptPanel.classList.toggle('collapsed', !settings.showTranscript);
+  $('toggle-transcript').textContent = settings.showTranscript ? 'Masquer' : 'Afficher';
 }
+$('toggle-transcript').addEventListener('click', () => {
+  settings = { ...loadSettings(), showTranscript: !settings.showTranscript };
+  saveSettings(settings);
+  applyTranscriptVisibility();
+});
+applyTranscriptVisibility();
+
+function renderSourceLabel(): void {
+  $('t-source').textContent = `texte : ${SOURCE_LABEL[effectiveSource(settings)]}`;
+}
+renderSourceLabel();
 
 // ------------------------------------------------------------------ errors
 function showError(error: FriendlyError): void {
@@ -237,37 +473,70 @@ $('error-close').addEventListener('click', hideError);
 for (const m of MODELS) modelSelect.add(new Option(m.label, m.id));
 for (const v of VOICES) voiceSelect.add(new Option(v, v));
 for (const x of PAUSES) pauseSelect.add(new Option(x.label, String(x.ms)));
+for (const x of TRANSCRIPT_SOURCES) sourceSelect.add(new Option(x.label, x.id));
+for (const m of ANALYSIS_MODELS) analysisSelect.add(new Option(m.label, m.id));
+
+function keyStatusText(s: Settings): string {
+  const gemini = s.apiKey
+    ? `Clé Gemini enregistrée dans ce navigateur : ${maskKey(s.apiKey)}`
+    : 'Aucune clé Gemini enregistrée pour l’instant.';
+  const groq = s.groqKey ? ` Clé Groq : ${maskKey(s.groqKey)}.` : ' Pas de clé Groq.';
+  return gemini + groq;
+}
 
 function openSettings(): void {
   settings = loadSettings();
   keyInput.value = settings.apiKey;
+  groqInput.value = settings.groqKey;
   modelSelect.value = settings.model;
   voiceSelect.value = settings.voice;
   pauseSelect.value = String(settings.pauseMs);
-  keyStatus.textContent = settings.apiKey
-    ? `Clé enregistrée dans ce navigateur : ${maskKey(settings.apiKey)}`
-    : 'Aucune clé enregistrée pour l’instant.';
+  sourceSelect.value = settings.transcriptSource;
+  analysisSelect.value = settings.analysisModel;
+  showTranscriptBox.checked = settings.showTranscript;
+  keyStatus.textContent = keyStatusText(settings);
   settingsDialog.returnValue = '';
   settingsDialog.showModal();
 }
 $('open-settings').addEventListener('click', openSettings);
 $('forget-key').addEventListener('click', () => {
-  saveSettings({ ...loadSettings(), apiKey: '' });
+  saveSettings({ ...loadSettings(), apiKey: '', groqKey: '' });
   keyInput.value = '';
-  keyStatus.textContent = 'Clé effacée de ce navigateur.';
+  groqInput.value = '';
+  keyStatus.textContent = 'Clés effacées de ce navigateur.';
+});
+$('clear-talks').addEventListener('click', () => {
+  void clearTalks().then(
+    () => {
+      debriefBtn.hidden = true;
+      current = null;
+      log('Conversations effacées de ce navigateur');
+      keyStatus.textContent = 'Conversations effacées de ce navigateur.';
+    },
+    () => log('Effacement impossible'),
+  );
 });
 settingsDialog.addEventListener('close', () => {
   if (settingsDialog.returnValue !== 'save') return;
   saveSettings({
     apiKey: keyInput.value,
+    groqKey: groqInput.value,
     model: modelSelect.value || DEFAULTS.model,
     voice: voiceSelect.value || DEFAULTS.voice,
     pauseMs: Number(pauseSelect.value) || DEFAULTS.pauseMs,
+    transcriptSource: (sourceSelect.value || DEFAULTS.transcriptSource) as TranscriptSource,
+    analysisModel: analysisSelect.value || DEFAULTS.analysisModel,
+    showTranscript: showTranscriptBox.checked,
   });
   settings = loadSettings();
+  applyTranscriptVisibility();
+  renderSourceLabel();
   log(
     settings.apiKey ? 'Réglages enregistrés dans ce navigateur' : 'Réglages enregistrés (sans clé)',
   );
+  if (settings.transcriptSource !== effectiveSource(settings)) {
+    log('Groq choisi sans clé Groq : Gemini Live sera utilisé');
+  }
   hideError();
 });
 
@@ -275,7 +544,7 @@ settingsDialog.addEventListener('close', () => {
 function log(text: string): void {
   const stamp = new Date().toLocaleTimeString('fr-FR');
   logLines.push(`${stamp} ${text}`);
-  if (logLines.length > 60) logLines.shift();
+  if (logLines.length > 80) logLines.shift();
   const row = document.createElement('div');
   row.textContent = `${stamp} — ${text}`;
   dLog.prepend(row);
@@ -283,9 +552,11 @@ function log(text: string): void {
 }
 
 $('copy-report').addEventListener('click', () => {
-  // The report never contains the API key or the transcript.
+  // The report never contains an API key or the transcript.
+  const turns: Turn[] = talk?.transcript.turns ?? [];
+  const learner = turns.filter((x) => x.who === 'you' && x.text.trim());
   const report = [
-    'English Buddy — rapport de test phase 0',
+    'English Buddy — rapport de test phase 1',
     `Date : ${new Date().toLocaleString('fr-FR')}`,
     `Conversation lancée avec : ${sessionLabel}`,
     `État : ${dState.textContent}`,
@@ -293,6 +564,9 @@ $('copy-report').addEventListener('click', () => {
     `Dernier délai : ${dLast.textContent}`,
     `Jake a parlé pendant que tu parlais encore : ${latency.overlaps} fois`,
     `Durée affichée : ${dDuration.textContent}`,
+    `Tours : ${learner.length} de toi, ${turns.filter((x) => x.who === 'jake').length} de Jake ; interruptions de Jake : ${turns.filter((x) => x.interrupted).length}`,
+    `Transcription : ${talk ? SOURCE_LABEL[talk.source] : '—'} ; échecs du 2ᵉ reconnaisseur : ${talk?.transcribeErrors ?? 0}`,
+    `Bilan : ${current?.debrief ? `${current.debrief.mistakes.length} fautes, modèle ${current.debrief.model}` : 'aucun'}`,
     `Navigateur : ${navigator.userAgent}`,
     '--- Journal ---',
     ...logLines,

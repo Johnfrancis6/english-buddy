@@ -3,15 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>English Buddy — phase 0</title>
+    <title>English Buddy — phase 1</title>
     <link rel="icon" href="data:," />
   </head>
   <body>
     <canvas id="stage" data-ready="false"></canvas>
 
     <header class="topbar">
-      <div class="brand">English Buddy <span class="tag">phase 0 · test</span></div>
-      <button id="open-settings" class="ghost" type="button">Réglages</button>
+      <div class="brand">English Buddy <span class="tag">phase 1 · test</span></div>
+      <div class="row">
+        <a class="ghost button" href="./lab.html">Labo transcription</a>
+        <button id="open-settings" class="ghost" type="button">Réglages</button>
+      </div>
     </header>
 
     <aside id="debug" class="panel debug" aria-label="Informations de test">
@@ -42,7 +45,14 @@
       <button id="copy-report" class="ghost small" type="button">Copier le rapport</button>
     </aside>
 
-    <section id="transcript" class="panel transcript" aria-label="Dernières phrases"></section>
+    <section id="transcript-panel" class="panel transcript" aria-label="Transcription en direct">
+      <div class="transcript-head">
+        <h2>Ce qui se dit</h2>
+        <span id="t-source" class="muted small"></span>
+        <button id="toggle-transcript" class="ghost small" type="button">Masquer</button>
+      </div>
+      <div id="transcript" class="transcript-body"></div>
+    </section>
 
     <div id="error" class="panel error" role="alert" hidden>
       <p id="error-message"></p>
@@ -56,10 +66,29 @@
 
     <footer class="controls">
       <button id="start" class="primary" type="button" disabled>Démarrer</button>
+      <button id="open-debrief" class="ghost" type="button" hidden>Mon dernier bilan</button>
       <button id="lip-test" class="ghost" type="button" disabled>
         Tester les lèvres (sans clé)
       </button>
     </footer>
+
+    <dialog id="debrief" class="panel debrief" aria-labelledby="debrief-title">
+      <div class="debrief-head">
+        <h2 id="debrief-title">Ton bilan</h2>
+        <span id="debrief-meta" class="muted small"></span>
+      </div>
+      <p id="debrief-status" class="status" aria-live="polite"></p>
+      <div id="debrief-body"></div>
+      <details id="debrief-transcript" class="whole">
+        <summary>Toute la conversation (texte)</summary>
+        <div id="debrief-lines"></div>
+      </details>
+      <div class="row">
+        <button id="debrief-retry" type="button" hidden>Réessayer le bilan</button>
+        <button id="debrief-copy" class="ghost" type="button">Copier le bilan</button>
+        <button id="debrief-close" class="primary" type="button">Fermer</button>
+      </div>
+    </dialog>
 
     <dialog id="settings" class="panel settings">
       <form method="dialog" id="settings-form">
@@ -93,12 +122,43 @@
           Si Jake te coupe pendant que tu cherches un mot, choisis un rythme plus posé. En échange,
           il met le même temps en plus à répondre.
         </p>
+
+        <h3>Transcription et bilan</h3>
+        <label for="source">Qui écrit tes phrases</label>
+        <select id="source"></select>
+        <p class="muted small">
+          Le bilan corrige le texte de tes phrases : il faut une transcription qui garde tes fautes.
+          Le <a href="./lab.html">labo transcription</a> compare les sources.
+        </p>
+        <label for="groq-key">Ta clé API Groq (facultative)</label>
+        <input
+          id="groq-key"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="gsk_…"
+        />
+        <p class="muted small">
+          🔒 Elle reste aussi dans ton navigateur et n’est envoyée qu’à Groq. Sans elle, tout marche
+          avec la transcription Gemini. Le son de tes phrases est envoyé à Groq pour être écrit,
+          puis oublié : rien n’est enregistré.
+        </p>
+        <label for="analysis-model">Modèle du bilan</label>
+        <select id="analysis-model"></select>
+        <label class="check"
+          ><input id="show-transcript" type="checkbox" /> Afficher le texte pendant la
+          conversation</label
+        >
         <p id="key-status" class="muted small"></p>
         <div class="row">
           <button id="save-settings" class="primary" value="save">Enregistrer</button>
-          <button id="forget-key" class="ghost" type="button">Effacer la clé</button>
+          <button id="forget-key" class="ghost" type="button">Effacer les clés</button>
           <button class="ghost" value="cancel">Annuler</button>
         </div>
+        <p class="muted small">
+          Tes conversations (texte seulement) restent dans ce navigateur.
+          <button id="clear-talks" class="link" type="button">Effacer mes conversations</button>
+        </p>
       </form>
     </dialog>
 

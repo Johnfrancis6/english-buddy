@@ -193,7 +193,10 @@ describe('settings', () => {
   });
   it('falls back to defaults on unknown or corrupt values', () => {
     const store = memory();
-    saveSettings({ apiKey: 'k', model: 'old-model', voice: 'Nobody', pauseMs: 123 }, store);
+    saveSettings(
+      { ...DEFAULTS, apiKey: 'k', model: 'old-model', voice: 'Nobody', pauseMs: 123 },
+      store,
+    );
     expect(loadSettings(store)).toEqual({ ...DEFAULTS, apiKey: 'k' });
     store.setItem('english-buddy.settings.v1', '{broken');
     expect(loadSettings(store)).toEqual(DEFAULTS);

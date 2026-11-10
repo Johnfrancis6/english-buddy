@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>English Buddy — labo transcription</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body class="page">
+    <header class="topbar static">
+      <div class="brand">English Buddy <span class="tag">labo transcription</span></div>
+      <a class="ghost button" href="./">← Retour à Jake</a>
+    </header>
+
+    <main class="lab">
+      <section class="panel">
+        <h1>Quelle transcription garde tes fautes ?</h1>
+        <p>
+          Le bilan corrige le <strong>texte</strong> de tes phrases. Si la machine qui écrit ce que
+          tu dis corrige tes fautes en silence, le bilan ne peut pas les voir. Ici, tu lis des
+          phrases avec des <strong>fautes volontaires</strong> ; la même prise de son est écrite par
+          chaque source, et on compte les fautes gardées.
+        </p>
+        <ol class="small">
+          <li>
+            Lis chaque phrase <strong>exactement comme elle est écrite</strong>, fautes comprises, à
+            ton rythme normal.
+          </li>
+          <li>Clique sur « Enregistrer », lis, puis clique sur « J’ai fini ».</li>
+          <li>Fais les 12 phrases (environ 5 minutes), puis copie les résultats pour Claude.</li>
+        </ol>
+        <div class="keys">
+          <label for="lab-gemini">Clé Gemini (obligatoire)</label>
+          <input
+            id="lab-gemini"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="AIza…"
+          />
+          <label for="lab-groq">Clé Groq (facultative)</label>
+          <input
+            id="lab-groq"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="gsk_…"
+          />
+          <details class="small">
+            <summary>Créer une clé Groq gratuite (2 minutes, sans carte bancaire)</summary>
+            <ol>
+              <li>
+                Ouvre
+                <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer"
+                  >console.groq.com/keys</a
+                >
+                et connecte-toi (par exemple avec ton compte Google).
+              </li>
+              <li>Clique sur <strong>Create API Key</strong>.</li>
+              <li>Donne-lui un nom (par exemple <em>english-buddy</em>), puis valide.</li>
+              <li>
+                Clique sur l’icône de copie : la clé (elle commence par <code>gsk_</code>) ne
+                s’affiche qu’une fois. Colle-la ici.
+              </li>
+            </ol>
+          </details>
+          <p class="muted small">
+            🔒 Les clés restent dans ce navigateur (les mêmes que dans « Réglages »). Le son de tes
+            phrases est envoyé à Google et à Groq pour être écrit, puis oublié : rien n’est
+            enregistré.
+          </p>
+        </div>
+        <div class="row">
+          <button id="lab-connect" class="primary" type="button">Commencer</button>
+          <span id="lab-state" class="muted small">Pas encore connecté.</span>
+        </div>
+      </section>
+
+      <section id="lab-card" class="panel sentence" hidden>
+        <p class="muted small" id="lab-progress"></p>
+        <p id="lab-sentence" class="big"></p>
+        <p id="lab-hints" class="muted small"></p>
+        <div class="row">
+          <button id="lab-record" class="primary" type="button">🎙 Enregistrer</button>
+          <span class="meter"><span id="lab-mic"></span></span>
+          <button id="lab-prev" class="ghost" type="button">← Précédente</button>
+          <button id="lab-next" class="ghost" type="button">Suivante →</button>
+        </div>
+        <div id="lab-results"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Résultats</h2>
+        <table id="lab-table" class="tally">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Phrases</th>
+              <th>Fautes gardées</th>
+              <th>Corrigées en silence</th>
+              <th>Mal entendues</th>
+              <th>Mots faux</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <p id="lab-reco" class="reco"></p>
+        <div class="row">
+          <button id="lab-use" class="primary" type="button" hidden>
+            Utiliser cette source pour Jake
+          </button>
+          <button id="lab-copy" class="ghost" type="button">Copier les résultats</button>
+        </div>
+        <p class="muted small">
+          « Mots faux » = taux d’erreur de mots par rapport à la phrase lue (0 % = identique).
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="/src/lab/main.ts"></script>
+  </body>
+</html>
