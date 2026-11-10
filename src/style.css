@@ -892,3 +892,74 @@ body.page {
 .mission-result.failed {
   border-left-color: var(--danger);
 }
+
+/* ===================================================== welcome (phase 5) */
+.welcome {
+  width: min(600px, 94vw);
+}
+.welcome-dots {
+  display: flex;
+  gap: var(--space-1);
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space-3);
+}
+.welcome-dots li {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--line);
+}
+.welcome-dots li.done,
+.welcome-dots li.current {
+  background: var(--accent);
+}
+.welcome-dots li.done {
+  opacity: 0.5;
+}
+.welcome-body {
+  margin: var(--space-3) 0 var(--space-4);
+}
+.welcome-steps {
+  padding-left: var(--space-5);
+  margin: var(--space-3) 0;
+}
+.welcome-steps li,
+.welcome-list li {
+  margin-bottom: var(--space-2);
+}
+.welcome-list {
+  padding-left: var(--space-5);
+}
+.note.privacy ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+}
+.note.privacy {
+  font-size: var(--text-sm);
+}
+.ok-text {
+  color: var(--success);
+  font-weight: 600;
+}
+.cards.levels {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cards.levels .card {
+  padding: var(--space-3);
+  gap: var(--space-1);
+}
+.cards.levels .chip {
+  justify-self: start;
+}
+.welcome .cards.people {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+@media (max-width: 560px) {
+  .cards.levels {
+    grid-template-columns: 1fr;
+  }
+  .welcome .cards.people {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

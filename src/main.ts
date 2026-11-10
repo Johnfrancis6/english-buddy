@@ -10,8 +10,10 @@ import {
   MODELS,
   PAUSES,
   saveSettings,
+  LEVELS,
   TRANSCRIPT_SOURCES,
   VOICES,
+  type Level,
   type Settings,
   type TranscriptSource,
 } from './settings';
@@ -73,6 +75,9 @@ import type { CloudSync } from './sync/types';
 import { TranscriptView } from './ui/transcriptView';
 import { debriefText, renderDebrief } from './ui/debriefView';
 import { el } from './ui/dom';
+import { WelcomeView } from './ui/welcomeView';
+import { loadWelcome, saveWelcome, shouldOpenWelcome, LEVEL_CHOICES } from './onboarding/welcome';
+import { listMicrophones } from './onboarding/micTest';
 
 const modelUrl = (c: CastMember) => `${import.meta.env.BASE_URL}models/${c.model}`;
 const picture = (kind: 'scenes' | 'people', id: string) =>
@@ -380,7 +385,8 @@ function enterScene(): void {
   log(
     `Scène : ${sceneInfo(sceneId).labelFr}, avec ${member.character.name}${plan.mode === 'challenge' ? ' (défi du jour)' : planMission() ? ` (mission « ${planMission()!.titleFr} »)` : ''}`,
   );
-  if (!loadSettings().apiKey) openSettings();
+  // No key yet: the welcome explains how to get one (it replaces the settings).
+  if (!loadSettings().apiKey) welcome.open('gemini');
 }
 
 enterBtn.addEventListener('click', enterScene);
@@ -552,7 +558,7 @@ goals.onPlaced = (en) => {
 async function learnerProfile(id: CastMember['id']): Promise<LearnerProfile> {
   try {
     const [talks, facts] = await Promise.all([listTalks(), listFacts()]);
-    const p = buildLearnerProfile(talks, facts, id, Date.now());
+    const p = buildLearnerProfile(talks, facts, id, Date.now(), loadSettings().startLevel);
     const remembered = facts.filter((f) => f.category !== 'last_talk').length;
     log(
       `Profil donné au personnage : niveau ${p.level} (${p.levelMeasured ? 'estimé sur tes bilans' : 'estimation de départ'}), ${remembered} souvenir${remembered > 1 ? 's' : ''}, fautes fréquentes : ${p.recentMistakes?.map((m) => m.type).join(', ') || 'aucune'}`,
@@ -709,7 +715,13 @@ async function runDebrief(s: SavedTalk): Promise<void> {
     const source = s.turns.find((x) => x.who === 'you')?.source ?? 'live';
     const facts = await listFacts().catch(() => [] as Fact[]);
     const others = (await listTalks().catch(() => [] as SavedTalk[])).filter((x) => x.id !== s.id);
-    const level = buildLearnerProfile(others, [], who.id, Date.now()).level;
+    const level = buildLearnerProfile(
+      others,
+      [],
+      who.id,
+      Date.now(),
+      loadSettings().startLevel,
+    ).level;
     s.debrief = await analyzer().analyze(analysisTurns(s), {
       level,
       characterName: who.name,
@@ -1232,6 +1244,22 @@ for (const v of VOICES) voiceSelect.add(new Option(v, v));
 for (const x of PAUSES) pauseSelect.add(new Option(x.label, String(x.ms)));
 for (const x of TRANSCRIPT_SOURCES) sourceSelect.add(new Option(x.label, x.id));
 for (const m of ANALYSIS_MODELS) analysisSelect.add(new Option(m.label, m.id));
+const micSelect = $<HTMLSelectElement>('mic-device');
+const levelSelect = $<HTMLSelectElement>('start-level');
+for (const l of LEVEL_CHOICES) levelSelect.add(new Option(`${l.title} (${l.id})`, l.id));
+
+/** Microphones of this computer; the saved one stays selected even if unplugged. */
+async function fillMicSelect(saved: string): Promise<void> {
+  const mics = await listMicrophones().catch(() => [] as MediaDeviceInfo[]);
+  micSelect.replaceChildren(new Option('Micro par défaut de l’ordinateur', ''));
+  mics
+    .filter((d) => d.deviceId && d.deviceId !== 'default')
+    .forEach((d, k) => micSelect.add(new Option(d.label || `Micro ${k + 1}`, d.deviceId)));
+  if (saved && ![...micSelect.options].some((o) => o.value === saved)) {
+    micSelect.add(new Option('Micro choisi (débranché ?)', saved));
+  }
+  micSelect.value = saved;
+}
 
 function keyStatusText(s: Settings): string {
   const gemini = s.apiKey
@@ -1251,12 +1279,37 @@ function openSettings(): void {
   sourceSelect.value = settings.transcriptSource;
   analysisSelect.value = settings.analysisModel;
   showTranscriptBox.checked = settings.showTranscript;
+  levelSelect.value = settings.startLevel;
+  void fillMicSelect(settings.micDeviceId);
   keyStatus.textContent = keyStatusText(settings);
   void renderCloud();
   settingsDialog.returnValue = '';
   settingsDialog.showModal();
 }
 $('open-settings').addEventListener('click', openSettings);
+$('open-welcome').addEventListener('click', () => {
+  settingsDialog.close();
+  welcome.open();
+});
+
+// ----------------------------------------------------------------- welcome
+const welcome = new WelcomeView($<HTMLDialogElement>('welcome'), {
+  picture: (id) => picture('people', id),
+  pick: (c) => {
+    if (voice.state !== 'idle' && voice.state !== 'error') return;
+    if (inScene) openHome();
+    if (member.id === c.id) return;
+    member = c;
+    choose();
+  },
+  finish: () => {
+    saveWelcome({ done: true, at: Date.now() });
+    settings = loadSettings();
+    log(`Accueil terminé : niveau de départ ${settings.startLevel}, ${member.character.name}`);
+    if (!inScene) $('enter').focus();
+  },
+  log,
+});
 $('forget-key').addEventListener('click', () => {
   saveSettings({ ...loadSettings(), apiKey: '', groqKey: '' });
   keyInput.value = '';
@@ -1287,6 +1340,10 @@ settingsDialog.addEventListener('close', () => {
     transcriptSource: (sourceSelect.value || DEFAULTS.transcriptSource) as TranscriptSource,
     analysisModel: analysisSelect.value || DEFAULTS.analysisModel,
     showTranscript: showTranscriptBox.checked,
+    micDeviceId: micSelect.value,
+    startLevel: (LEVELS as readonly string[]).includes(levelSelect.value)
+      ? (levelSelect.value as Level)
+      : DEFAULTS.startLevel,
   });
   settings = loadSettings();
   applyTranscriptVisibility();
@@ -1364,6 +1421,7 @@ measures.hidden = true;
 stage.setViewShift(homeShift());
 void showCharacter();
 void renderToday();
+if (shouldOpenWelcome(loadWelcome(), settings.apiKey)) welcome.open();
 void backfillCards().then(() => renderToday());
 // The other characters download in the background once the first is shown.
 setTimeout(() => CAST.forEach((c) => stage.preload(modelUrl(c))), 4000);

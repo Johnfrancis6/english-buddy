@@ -15,6 +15,8 @@ export interface GeminiLiveOptions {
   systemPrompt: string;
   /** Sent as text right after connecting so the character speaks first. */
   greeting: string | null;
+  /** Chosen microphone ('' = default). */
+  micDeviceId?: string;
 }
 
 const OUTPUT_RATE = 24_000;
@@ -87,7 +89,7 @@ export class GeminiLiveSession implements VoiceSession {
     this.setState('connecting');
     try {
       await this.player.resume();
-      await this.mic.start((pcm, rms) => this.onMicChunk(pcm, rms));
+      await this.mic.start((pcm, rms) => this.onMicChunk(pcm, rms), this.opts.micDeviceId);
       await this.connectFirst();
     } catch (err) {
       if (this.stopping) return;

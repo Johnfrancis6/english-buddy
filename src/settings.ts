@@ -57,6 +57,10 @@ export const TRANSCRIPT_SOURCES = [
 ] as const;
 export type TranscriptSource = (typeof TRANSCRIPT_SOURCES)[number]['id'];
 
+/** Starting level the learner picks in the welcome (used until debriefs measure it). */
+export const LEVELS = ['A2', 'B1', 'B2', 'C1'] as const;
+export type Level = (typeof LEVELS)[number];
+
 export interface Settings {
   apiKey: string;
   groqKey: string;
@@ -70,6 +74,10 @@ export interface Settings {
   transcriptSource: TranscriptSource;
   /** Show the live transcript during the talk. */
   showTranscript: boolean;
+  /** Microphone chosen in the welcome or the settings ('' = the system default). */
+  micDeviceId: string;
+  /** Level the learner says they have, until debriefs estimate it. */
+  startLevel: Level;
 }
 
 const KEY = 'english-buddy.settings.v1';
@@ -84,6 +92,8 @@ export const DEFAULTS: Settings = {
   analysisModel: ANALYSIS_MODELS[0].id,
   transcriptSource: 'live',
   showTranscript: true,
+  micDeviceId: '',
+  startLevel: 'B1',
 };
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;
@@ -125,6 +135,8 @@ export function loadSettings(store: Store = localStorage): Settings {
         DEFAULTS.transcriptSource,
       ),
       showTranscript: typeof p.showTranscript === 'boolean' ? p.showTranscript : true,
+      micDeviceId: typeof p.micDeviceId === 'string' ? p.micDeviceId : '',
+      startLevel: pick(p.startLevel, LEVELS, DEFAULTS.startLevel),
     };
   } catch {
     return { ...DEFAULTS };

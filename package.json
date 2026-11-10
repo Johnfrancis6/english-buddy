@@ -16,6 +16,7 @@
     "@google/genai": "^3.0.0",
     "@pixiv/three-vrm": "^3.5.5",
     "@supabase/supabase-js": "^2.119.0",
+    "pdfjs-dist": "^6.5.438",
     "three": "^0.187.0",
     "ts-fsrs": "^6.0.0"
   },

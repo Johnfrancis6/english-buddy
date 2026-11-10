@@ -11,12 +11,15 @@ export class Mic {
   private ctx: AudioContext | null = null;
   private stream: MediaStream | null = null;
 
-  async start(onChunk: (pcm: Uint8Array, rms: number) => void): Promise<void> {
+  async start(onChunk: (pcm: Uint8Array, rms: number) => void, deviceId = ''): Promise<void> {
     if (!navigator.mediaDevices?.getUserMedia) {
       throw new DOMException('getUserMedia unavailable', 'NotFoundError');
     }
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: {
+        // The microphone chosen in the welcome; `ideal` falls back to the
+        // default one if it was unplugged.
+        ...(deviceId ? { deviceId: { ideal: deviceId } } : {}),
         channelCount: 1,
         // Echo safeguard: Franco uses a headset, but if someone plays Jake on
         // speakers the browser's canceller keeps Jake from hearing himself.

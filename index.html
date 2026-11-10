@@ -10,7 +10,7 @@
     <canvas id="stage" data-ready="false" role="img" aria-label="Scène 3D"></canvas>
 
     <header class="topbar">
-      <div class="brand">English Buddy <span class="chip">phase 4 · test</span></div>
+      <div class="brand">English Buddy <span class="chip">phase 5 · test</span></div>
       <div class="row tight">
         <button id="open-home" class="btn" type="button" hidden>Changer de scène</button>
         <button id="open-map" class="btn" type="button">Missions</button>
@@ -215,16 +215,23 @@
       </div>
     </dialog>
 
+    <dialog id="welcome" class="panel dialog welcome" aria-labelledby="welcome-title"></dialog>
+
     <dialog id="settings" class="panel dialog settings" aria-labelledby="settings-title">
       <form method="dialog" id="settings-form">
         <h2 id="settings-title">Réglages</h2>
+        <p class="muted small">
+          Première fois ici ?
+          <button id="open-welcome" class="link" type="button">Revoir l’accueil guidé</button>
+          (clés gratuites, micro, niveau).
+        </p>
         <label for="api-key">Ta clé API Gemini</label>
         <input
           id="api-key"
           type="password"
           autocomplete="off"
           spellcheck="false"
-          placeholder="AIza…"
+          placeholder="Colle ta clé ici"
         />
         <p class="note">
           🔒 <strong>Cette clé reste dans ton navigateur.</strong> Elle est enregistrée uniquement
@@ -239,6 +246,11 @@
         </p>
 
         <h3>Conversation</h3>
+        <label for="mic-device">Ton micro</label>
+        <select id="mic-device"></select>
+        <label for="start-level">Ton niveau de départ</label>
+        <select id="start-level"></select>
+        <p class="muted small">Utilisé tant que tes bilans n’ont pas encore estimé ton niveau.</p>
         <label for="pause">Ton rythme de parole</label>
         <select id="pause"></select>
         <p class="muted small">

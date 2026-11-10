@@ -7,7 +7,7 @@ import { frequentMistakes } from './stats';
 
 /**
  * The learner profile given to a character before a talk: estimated level
- * (B1 until a debrief has scores), most frequent recent mistakes, and what
+ * (the learner's own choice, B1 by default, until a debrief has scores), most frequent recent mistakes, and what
  * this character remembers.
  */
 export function buildLearnerProfile(
@@ -15,6 +15,8 @@ export function buildLearnerProfile(
   facts: readonly Fact[],
   character: CharacterId,
   now: number,
+  /** The level the learner chose in the welcome, used until debriefs measure one. */
+  startLevel: LearnerProfile['level'] = DEFAULT_LEARNER.level,
 ): LearnerProfile {
   const recent = [...talks]
     .sort((a, b) => b.startedAt - a.startedAt)
@@ -23,7 +25,7 @@ export function buildLearnerProfile(
   const level = estimateLevel(recent);
   return {
     ...DEFAULT_LEARNER,
-    level: level?.band ?? DEFAULT_LEARNER.level,
+    level: level?.band ?? startLevel,
     levelMeasured: level !== null,
     recentMistakes: frequentMistakes(talks, now).map((m) => ({
       type: m.type,

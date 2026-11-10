@@ -10,6 +10,13 @@ test('home, scene, character, key, gestures and lip sync', async ({ page }) => {
   const canvas = page.locator('#stage');
   await expect(canvas).toHaveAttribute('data-ready', 'true', { timeout: 60_000 });
 
+  // A newcomer (no key) is welcomed first; "Plus tard" leaves the home screen usable.
+  const welcome = page.locator('#welcome');
+  await expect(welcome).toBeVisible();
+  await expect(welcome).toContainText('Ta voix n’est jamais enregistrée');
+  await welcome.getByRole('button', { name: 'Plus tard' }).click();
+  await expect(welcome).toBeHidden();
+
   // Home: three scenes, five characters, Jake at the café by default.
   await expect(page.locator('#home')).toBeVisible();
   await expect(page.locator('#scene-cards .card')).toHaveCount(3);
@@ -28,14 +35,15 @@ test('home, scene, character, key, gestures and lip sync', async ({ page }) => {
   await expect(canvas).toHaveAttribute('data-ready', 'true', { timeout: 60_000 });
   await expect(page.locator('#enter')).toContainText('Emma');
 
-  // First visit without a key: entering opens the settings with the privacy note.
+  // Still no key: entering opens the welcome at the key step (not the settings).
   await page.locator('#enter').click();
-  const dialog = page.locator('#settings');
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('Cette clé reste dans ton navigateur');
-  await page.locator('#api-key').fill('AIzaFAKE-smoke-test-key-0000');
-  await page.locator('#save-settings').click();
-  await expect(dialog).toBeHidden();
+  await expect(welcome).toBeVisible();
+  await expect(welcome).toHaveAttribute('data-step', 'gemini');
+  await page.locator('#gemini-input').fill('AIzaFAKE-smoke-test-key-0000');
+  await page.locator('#welcome-next').click();
+  await expect(welcome).toHaveAttribute('data-step', 'groq');
+  await welcome.getByRole('button', { name: 'Plus tard' }).click();
+  await expect(welcome).toBeHidden();
   const stored = await page.evaluate(() => localStorage.getItem('english-buddy.settings.v1'));
   expect(stored).toContain('AIzaFAKE-smoke-test-key-0000');
   expect(stored).toContain('"character":"emma"');
