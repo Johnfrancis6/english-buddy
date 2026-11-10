@@ -168,12 +168,12 @@ without Franco's go**. A phase may take several sessions.
 | 0 | Risky links test | One free VRM in a simple scene, looks at you, blinks, talks live through Gemini with your key, lip sync; latency measured on screen | Fable 5.2 |
 | 1 | Teaching conversation | Jake persona prompt, recast policy, live transcript, end-of-talk debrief in French, "Pourquoi ?" button | Opus 5.5 |
 | 2 | Characters and scenes | Café, office, street scenes; Jake, Emma, Maya; walk, wave, fist bump, laugh, nod; scene picker | Opus 5.5 |
-| 3 | Accounts and tracking | Supabase auth, character memory, mistakes by type, skill scores, dashboard | Opus 5.5 |
-| 4 | Habit and challenges | FSRS reviews, daily challenge, missions, expressions to place, streak with freeze, scene map | Opus 5.5 |
-| 5 | Documents | PDF / link import, study with a character, words to review | Opus 5.5 |
-| 6 | Singing | Spike first (what can sing for free?), then karaoke with a score, duet with Maya, songs from mistakes | Fable 5.2 |
-| 7 | Pronunciation | Per-word score, hard sounds; compare free options first | Opus 5.5 |
-| 8 | Launch | Onboarding with a French guide to create a free key, tests with 2–3 friends, `main` deployed | Opus 5.5 |
+| 3 | Memory and progress | Character memory (facts about the learner, last talk) kept in the browser (IndexedDB); progress dashboard: mistakes by type week by week, speaking time, new words, level estimate (B1/B2/C1, shown as an estimate); Supabase accounts prepared but optional (code + SQL file, local-first; Franco activates it on his return) | Opus 5.5 |
+| 4 | Habit and challenges | FSRS reviews of the learner's own mistakes (ts-fsrs), 5-minute daily challenge, missions in scenes with a score, expressions to place, streak (≥ 3 min of real speech, one freeze per week), scene map | Opus 5.5 |
+| 5 | Onboarding and documents | French onboarding with a guide to create free keys (moved from phase 8); PDF import and study with a character, words to review (web links only where the site allows it) | Opus 5.5 |
+| 6 | Pronunciation | Per-word score, hard sounds; compare free options first | Opus 5.5 |
+| 7 | Singing | Spike first (what can sing for free?), then karaoke with a score, duet with Maya, songs from mistakes | Fable 5.2 |
+| 8 | Launch prep | Polish, final harmonisation, full French test guide; stop before inviting friends and before merging to `main` (Franco decides) | Opus 5.5 |
 
 Estimate: 15 to 24 build sessions, about 4 to 6 weeks with Franco's test
 pauses.

@@ -18,6 +18,10 @@ Dernière mise à jour : 2026-11-10 (fin de la construction de la phase 2, mode 
 
 ## Mode autopilote (Franco absent)
 
+Ordre des phases choisi par Franco le 2026-11-10 : 3 mémoire des
+personnages et progression (en local, Supabase facultatif), 4 révisions et
+défis, 5 accueil et documents PDF, 6 prononciation, 7 chant, 8 finition.
+
 Depuis le 2026-11-10, les phases s'enchaînent sans attendre le feu vert de
 Franco (règles dans `CLAUDE.md`). La session de la phase 1 sert de chef
 d'orchestre : elle ouvre chaque session de phase et vérifie chaque jour que
@@ -162,7 +166,7 @@ Ce qui est faible :
 
 ## Prochaine session
 
-- Autopilote : phase 3 (comptes et suivi), modèle conseillé **Opus 5.5**,
+- Autopilote : phase 3 (mémoire des personnages et progression), modèle conseillé **Opus 5.5**,
   branche `phase-3` créée depuis `phase-2`, ouverte par la session
   orchestratrice.
 
