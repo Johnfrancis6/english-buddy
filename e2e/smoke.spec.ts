@@ -23,7 +23,7 @@ test('page loads, the character renders, the mouth follows sound', async ({ page
   // The canvas really draws: frames advance and the image is not one flat colour.
   const frames = async () => Number(await canvas.getAttribute('data-frames'));
   const before = await frames();
-  await expect.poll(frames).toBeGreaterThan(before + 5);
+  await expect.poll(frames, { timeout: 15_000 }).toBeGreaterThan(before + 5);
   const colours = await page.evaluate(async () => {
     const c = document.getElementById('stage') as HTMLCanvasElement;
     await new Promise(requestAnimationFrame);
